@@ -1,7 +1,10 @@
 package smallville7123.infinity_wire;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
+import net.minecraft.client.renderer.block.statemap.DefaultStateMapper;
+import net.minecraft.client.renderer.block.statemap.IStateMapper;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraftforge.client.event.ModelRegistryEvent;
@@ -14,6 +17,8 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.registry.GameRegistry;
 import org.apache.logging.log4j.Logger;
+
+import java.util.Map;
 
 @Mod(
         modid = InfinityWire.MOD_ID,
@@ -89,7 +94,7 @@ public class InfinityWire {
         public static void addItems(RegistryEvent.Register<Item> event) {
             logger.info("Registering items");
             event.getRegistry().register(new InfinityWire_ITEM().setRegistryName(MOD_ID, "InfinityWire_Item").setTranslationKey("infinity_wire.infinityWire"));
-            event.getRegistry().register(new ItemBlock(Blocks.InfinityWire_Block).setRegistryName(MOD_ID, "InfinityWire_ItemBlock"));
+            event.getRegistry().register(new ItemBlock(Blocks.InfinityWire_Block).setRegistryName(Blocks.InfinityWire_Block.getRegistryName()));
             logger.info("Registered items");
         }
 
@@ -112,9 +117,6 @@ public class InfinityWire {
 
             ModelResourceLocation modelResourceLocationItem = new ModelResourceLocation("infinity_wire:infinitywire_item", "inventory");
             ModelLoader.setCustomModelResourceLocation(Items.InfinityWire_Item, 0, modelResourceLocationItem);
-
-//            DefaultStateMapper modelResourceLocationBlock = new DefaultStateMapper("minecraft:redstone", "inventory");
-//            ModelLoader.setCustomStateMapper(REDSTONE_WIRE_2, 0, modelResourceLocationBlock);
 
             logger.info("Registered models");
         }
