@@ -1,7 +1,10 @@
 package smallville7123.infinity_wire;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
+import net.minecraft.client.renderer.block.statemap.DefaultStateMapper;
+import net.minecraft.client.renderer.block.statemap.StateMapperBase;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraftforge.client.event.ModelRegistryEvent;
@@ -14,8 +17,12 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraftforge.fml.common.registry.GameRegistry.ObjectHolder;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.Map;
 
 @Mod(
         modid = Main.MOD_ID,
@@ -33,6 +40,11 @@ public class Main {
     public static final String MC_VERSION = "[1.12.2]";
 
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
+
+    private static final String INFINITE_WIRE_BLOCK_ID = "infinity_wire_block";
+    private static final String INFINITE_WIRE_ITEM_ID = "infinity_wire_item";
+    private static final String INFINITE_WIRE_ITEMBLOCK_ID = "infinity_wire_itemblock";
+
 
     /**
      * This is the instance of your mod as created by Forge. It will never be null.
@@ -70,11 +82,11 @@ public class Main {
      */
     @ObjectHolder(MOD_ID)
     public static class Registered {
-//        @ObjectHolder("infinity_wire")
-//        public static final Block InfinityWire_Block = null;
+        @ObjectHolder(INFINITE_WIRE_BLOCK_ID)
+        public static final Block InfinityWire_Block = null;
 
-        @ObjectHolder("infinity_wire")
-        public static final Item InfinityWire_ITEM = null;
+        @ObjectHolder(INFINITE_WIRE_ITEM_ID)
+        public static final Item InfinityWire_Item = null;
     }
 
     /**
@@ -91,7 +103,13 @@ public class Main {
         @SubscribeEvent
         public static void addBlocks(RegistryEvent.Register<Block> event) {
             LOGGER.info("Registering blocks");
-//            event.getRegistry().register(new InfinityWire_BLOCK().setRegistryName(new ResourceLocation(MOD_ID, "InfinityWire_Block")).setTranslationKey("infinity_wire.infinityWire"));
+
+            final Block[] blocks = {
+                    new InfinityWire_BLOCK().setRegistryName(MOD_ID, INFINITE_WIRE_BLOCK_ID).setTranslationKey(MOD_ID + "." + "infinity_wire"),
+            };
+
+            event.getRegistry().registerAll(blocks);
+
             LOGGER.info("Registered blocks");
         }
 
@@ -104,8 +122,8 @@ public class Main {
         public static void addItems(RegistryEvent.Register<Item> event) {
             LOGGER.info("Registering items");
             final Item[] items = {
-                    new InfinityWire_ITEM().setRegistryName(MOD_ID, "infinity_wire").setTranslationKey(MOD_ID + "." + "infinity_wire"),
-//                    new ItemBlock(Blocks.InfinityWire_Block).setRegistryName(MOD_ID, "infinity_wire").setTranslationKey(MOD_ID + "." + "infinity_wire"),
+                    new InfinityWire_ITEM().setRegistryName(MOD_ID, INFINITE_WIRE_ITEM_ID).setTranslationKey(MOD_ID + "." + "infinity_wire"),
+                    new ItemBlock(Registered.InfinityWire_Block).setRegistryName(Registered.InfinityWire_Block.getRegistryName()).setTranslationKey(MOD_ID + "." + "infinity_wire"),
             };
 
             event.getRegistry().registerAll(items);
@@ -119,11 +137,16 @@ public class Main {
         @SubscribeEvent
         public static void registerModels(ModelRegistryEvent event) {
             LOGGER.info("Registering models");
-            registerModel(Registered.InfinityWire_ITEM, 0);
+            registerBlockModel(Registered.InfinityWire_Block);
+            registerItemModel(Registered.InfinityWire_Item, 0);
             LOGGER.info("Registered models");
         }
 
-        private static void registerModel(Item item, int meta) {
+        private static void registerBlockModel(Block block) {
+            ModelLoader.setCustomStateMapper(block, new DefaultStateMapper());
+        }
+
+        private static void registerItemModel(Item item, int meta) {
             ModelLoader.setCustomModelResourceLocation(item, meta, new ModelResourceLocation(item.getRegistryName(), "inventory"));
         }
     }

@@ -1,0 +1,6 @@
+{
+    "parent": "item/generated",
+    "textures": {
+        "layer0": "infinity_wire:items/redstone_dust"
+    }
+}
