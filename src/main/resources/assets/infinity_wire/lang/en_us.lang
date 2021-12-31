@@ -1,8 +1,5 @@
+# Items
+item.infinity_wire.infinity_wire.name=Infinity Wire
 
-language.name=English
-language.region=United States
-language.code=en_us
-
-item.infinity_wire.infinityWire.name=Infinity Wire
-
-tile.infinity_wire.infinityWire.name=Infinity Wire
+# Blocks
+tile.infinity_wire.infinity_wire.name=Infinity Wire

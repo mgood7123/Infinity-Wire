@@ -24,31 +24,31 @@ public class InfinityWire_ITEM extends Item
 
     public EnumActionResult onItemUse(EntityPlayer player, World worldIn, BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ)
     {
-        if (InfinityWire.Blocks.InfinityWire_Block == null) {
-            InfinityWire.logger.error("InfinityWire_Block is null");
+//        if (InfinityWire.Blocks.InfinityWire_Block == null) {
+//            InfinityWire.logger.error("InfinityWire_Block is null");
             return EnumActionResult.FAIL;
-        }
+//        }
 
-        boolean flag = worldIn.getBlockState(pos).getBlock().isReplaceable(worldIn, pos);
-        BlockPos blockpos = flag ? pos : pos.offset(facing);
-        ItemStack itemstack = player.getHeldItem(hand);
-
-
-        if (player.canPlayerEdit(blockpos, facing, itemstack) && worldIn.mayPlace(worldIn.getBlockState(blockpos).getBlock(), blockpos, false, facing, player) && InfinityWire.Blocks.InfinityWire_Block.canPlaceBlockAt(worldIn, blockpos))
-        {
-            worldIn.setBlockState(blockpos, InfinityWire.Blocks.InfinityWire_Block.getDefaultState());
-
-            if (player instanceof EntityPlayerMP)
-            {
-                CriteriaTriggers.PLACED_BLOCK.trigger((EntityPlayerMP)player, blockpos, itemstack);
-            }
-
-            itemstack.shrink(1);
-            return EnumActionResult.SUCCESS;
-        }
-        else
-        {
-            return EnumActionResult.FAIL;
-        }
+//        boolean flag = worldIn.getBlockState(pos).getBlock().isReplaceable(worldIn, pos);
+//        BlockPos blockpos = flag ? pos : pos.offset(facing);
+//        ItemStack itemstack = player.getHeldItem(hand);
+//
+//
+//        if (player.canPlayerEdit(blockpos, facing, itemstack) && worldIn.mayPlace(worldIn.getBlockState(blockpos).getBlock(), blockpos, false, facing, player) && InfinityWire.Blocks.InfinityWire_Block.canPlaceBlockAt(worldIn, blockpos))
+//        {
+//            worldIn.setBlockState(blockpos, InfinityWire.Blocks.InfinityWire_Block.getDefaultState());
+//
+//            if (player instanceof EntityPlayerMP)
+//            {
+//                CriteriaTriggers.PLACED_BLOCK.trigger((EntityPlayerMP)player, blockpos, itemstack);
+//            }
+//
+//            itemstack.shrink(1);
+//            return EnumActionResult.SUCCESS;
+//        }
+//        else
+//        {
+//            return EnumActionResult.FAIL;
+//        }
     }
 }
