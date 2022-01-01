@@ -22,11 +22,6 @@
       <option name="url" value="https://repo.maven.apache.org/maven2/" />
     </remote-repository>
     <remote-repository>
-      <option name="id" value="Su5ed LegacyDev Fork" />
-      <option name="name" value="Su5ed LegacyDev Fork" />
-      <option name="url" value="https://su5ed.jfrog.io/artifactory/maven/" />
-    </remote-repository>
-    <remote-repository>
       <option name="id" value="maven" />
       <option name="name" value="maven" />
       <option name="url" value="https://maven.minecraftforge.net/" />

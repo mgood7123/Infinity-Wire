@@ -1,0 +1,6 @@
+{
+    "parent": "modid_infinity_wire:block/redstone_dust_side_alt",
+    "textures": {
+        "line": "modid_infinity_wire:block/redstone_dust_line1"
+    }
+}

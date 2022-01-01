@@ -1,6 +1,0 @@
-{
-    "parent": "infinity_wire:block/redstone_side",
-    "textures": {
-        "line": "infinity_wire:blocks/redstone_dust_line1"
-    }
-}
