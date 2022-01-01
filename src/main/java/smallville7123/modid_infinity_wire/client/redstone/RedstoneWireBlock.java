@@ -310,6 +310,8 @@ public class RedstoneWireBlock extends Block {
 
    public void onRemove(BlockState p_196243_1_, World p_196243_2_, BlockPos p_196243_3_, BlockState p_196243_4_, boolean p_196243_5_) {
       if (!p_196243_5_ && !p_196243_1_.is(p_196243_4_.getBlock())) {
+         Main.LOGGER.info("Remove: " + p_196243_1_.getBlock().getRegistryName() + " -> " + p_196243_4_.getBlock().getRegistryName());
+
          super.onRemove(p_196243_1_, p_196243_2_, p_196243_3_, p_196243_4_, p_196243_5_);
          if (!p_196243_2_.isClientSide) {
             for(Direction direction : Direction.values()) {
