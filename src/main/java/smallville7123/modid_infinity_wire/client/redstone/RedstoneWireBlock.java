@@ -7,6 +7,7 @@ import net.minecraft.block.*;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.particles.RedstoneParticleData;
+import net.minecraft.state.BooleanProperty;
 import net.minecraft.state.EnumProperty;
 import net.minecraft.state.IntegerProperty;
 import net.minecraft.state.StateContainer;
@@ -23,9 +24,11 @@ import net.minecraft.util.math.vector.Vector3f;
 import net.minecraft.world.*;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import smallville7123.modid_infinity_wire.Main;
 
 import javax.annotation.Nullable;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 
@@ -35,6 +38,7 @@ public class RedstoneWireBlock extends Block {
    public static final EnumProperty<RedstoneSide> SOUTH = BlockStateProperties.SOUTH_REDSTONE;
    public static final EnumProperty<RedstoneSide> WEST = BlockStateProperties.WEST_REDSTONE;
    public static final IntegerProperty POWER = BlockStateProperties.POWER;
+   public static final BooleanProperty CONNECTED_TO_POWER = BooleanProperty.create("connected_to_power");
    public static final Map<Direction, EnumProperty<RedstoneSide>> PROPERTY_BY_DIRECTION = Maps.newEnumMap(ImmutableMap.of(Direction.NORTH, NORTH, Direction.EAST, EAST, Direction.SOUTH, SOUTH, Direction.WEST, WEST));
    private static final VoxelShape SHAPE_DOT = Block.box(3.0D, 0.0D, 3.0D, 13.0D, 1.0D, 13.0D);
    private static final Map<Direction, VoxelShape> SHAPES_FLOOR = Maps.newEnumMap(ImmutableMap.of(Direction.NORTH, Block.box(3.0D, 0.0D, 0.0D, 13.0D, 1.0D, 13.0D), Direction.SOUTH, Block.box(3.0D, 0.0D, 3.0D, 13.0D, 1.0D, 16.0D), Direction.EAST, Block.box(3.0D, 0.0D, 3.0D, 16.0D, 1.0D, 13.0D), Direction.WEST, Block.box(0.0D, 0.0D, 3.0D, 13.0D, 1.0D, 13.0D)));
@@ -46,7 +50,7 @@ public class RedstoneWireBlock extends Block {
 
    public RedstoneWireBlock(Properties p_i48344_1_) {
       super(p_i48344_1_);
-      this.registerDefaultState(this.stateDefinition.any().setValue(NORTH, RedstoneSide.NONE).setValue(EAST, RedstoneSide.NONE).setValue(SOUTH, RedstoneSide.NONE).setValue(WEST, RedstoneSide.NONE).setValue(POWER, Integer.valueOf(0)));
+      this.registerDefaultState(this.stateDefinition.any().setValue(NORTH, RedstoneSide.NONE).setValue(EAST, RedstoneSide.NONE).setValue(SOUTH, RedstoneSide.NONE).setValue(WEST, RedstoneSide.NONE).setValue(POWER, Integer.valueOf(0)).setValue(CONNECTED_TO_POWER, Boolean.valueOf(true)));
       this.crossState = this.defaultBlockState().setValue(NORTH, RedstoneSide.SIDE).setValue(EAST, RedstoneSide.SIDE).setValue(SOUTH, RedstoneSide.SIDE).setValue(WEST, RedstoneSide.SIDE);
 
       for(BlockState blockstate : this.getStateDefinition().getPossibleStates()) {
@@ -202,7 +206,7 @@ public class RedstoneWireBlock extends Block {
    }
 
    private void updatePowerStrength(World p_235547_1_, BlockPos p_235547_2_, BlockState p_235547_3_) {
-      int i = this.calculateTargetStrength(p_235547_1_, p_235547_2_);
+      int i = this.calculateTargetStrength(p_235547_1_, p_235547_2_, p_235547_3_);
       if (p_235547_3_.getValue(POWER) != i) {
          if (p_235547_1_.getBlockState(p_235547_2_) == p_235547_3_) {
             p_235547_1_.setBlock(p_235547_2_, p_235547_3_.setValue(POWER, Integer.valueOf(i)), 2);
@@ -222,30 +226,63 @@ public class RedstoneWireBlock extends Block {
 
    }
 
-   private int calculateTargetStrength(World p_235546_1_, BlockPos p_235546_2_) {
+   private int calculateTargetStrength(World p_235546_1_, BlockPos p_235546_2_, BlockState p_235546_3_) {
       this.shouldSignal = false;
       int i = p_235546_1_.getBestNeighborSignal(p_235546_2_);
       this.shouldSignal = true;
       int j = 0;
-      if (i < 15) {
+      BlockState b = p_235546_3_;
+      if (i == 15) {
+//         Main.LOGGER.info("FULL POWER");
+//         b = p_235546_3_.setValue(CONNECTED_TO_POWER, true);
+//         boolean connected = b.getValue(CONNECTED_TO_POWER);
+//         p_235546_1_.setBlock(p_235546_2_, b, 2 /* unknown */);
+//         Main.LOGGER.info("isConnectedToPower = " + connected);
+      } else {
          for(Direction direction : Direction.Plane.HORIZONTAL) {
             BlockPos blockpos = p_235546_2_.relative(direction);
             BlockState blockstate = p_235546_1_.getBlockState(blockpos);
-            j = Math.max(j, this.getWireSignal(blockstate));
+            j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, blockstate));
             BlockPos blockpos1 = p_235546_2_.above();
             if (blockstate.isRedstoneConductor(p_235546_1_, blockpos) && !p_235546_1_.getBlockState(blockpos1).isRedstoneConductor(p_235546_1_, blockpos1)) {
-               j = Math.max(j, this.getWireSignal(p_235546_1_.getBlockState(blockpos.above())));
+               j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, p_235546_1_.getBlockState(blockpos.above())));
             } else if (!blockstate.isRedstoneConductor(p_235546_1_, blockpos)) {
-               j = Math.max(j, this.getWireSignal(p_235546_1_.getBlockState(blockpos.below())));
+               j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, p_235546_1_.getBlockState(blockpos.below())));
             }
          }
       }
 
-      return Math.max(i, j - 1);
+      // do not decay power strength
+      Main.LOGGER.info("target strength = i " + i + ", j " + j);
+      boolean connected = b.getValue(CONNECTED_TO_POWER);
+      Main.LOGGER.info("isConnectedToPower = " + connected);
+      Main.LOGGER.info("block pos = " + b);
+      return connected ? Math.max(i, j) : 0;
    }
 
-   private int getWireSignal(BlockState p_235557_1_) {
-      return p_235557_1_.is(this) ? p_235557_1_.getValue(POWER) : 0;
+   private int getWireSignal(World p_235557_1_, BlockPos p_235557_2_, BlockState p_235557_3_) {
+      if (p_235557_3_.is(this)) {
+         Main.LOGGER.info("p_235557_3_ (this) = " + p_235557_3_);
+         Main.LOGGER.info("p_235557_3_.isSignalSource() = " + p_235557_3_.isSignalSource());
+         Main.LOGGER.info("p_235557_3_.isConnectedToPower = " + p_235557_3_.getValue(CONNECTED_TO_POWER));
+         int power = p_235557_3_.getValue(POWER);
+         Main.LOGGER.info("p_235557_3_ power = " + power);
+         Main.LOGGER.info("block pos = " + p_235557_2_);
+         p_235557_3_.setValue(CONNECTED_TO_POWER, power != 0);
+         return power;
+      } else {
+         Main.LOGGER.info("p_235557_3_ = " + p_235557_3_);
+         Main.LOGGER.info("p_235557_3_.isSignalSource() = " + p_235557_3_.isSignalSource());
+         Optional<Integer> p = p_235557_3_.getOptionalValue(POWER);
+         Main.LOGGER.info("p_235557_3_ has power = " + p.isPresent());
+         Main.LOGGER.info("block pos = " + p_235557_2_);
+         int power = p.orElse(0);
+         BlockState b = p_235557_1_.getBlockState(p_235557_2_);
+         if (b.hasProperty(CONNECTED_TO_POWER)) {
+            b.setValue(CONNECTED_TO_POWER, power != 0);
+         }
+         return power;
+      }
    }
 
    private void checkCornerChangeAt(World p_176344_1_, BlockPos p_176344_2_) {
@@ -412,7 +449,7 @@ public class RedstoneWireBlock extends Block {
    }
 
    protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> p_206840_1_) {
-      p_206840_1_.add(NORTH, EAST, SOUTH, WEST, POWER);
+      p_206840_1_.add(NORTH, EAST, SOUTH, WEST, POWER, CONNECTED_TO_POWER);
    }
 
    public ActionResultType use(BlockState p_225533_1_, World p_225533_2_, BlockPos p_225533_3_, PlayerEntity p_225533_4_, Hand p_225533_5_, BlockRayTraceResult p_225533_6_) {
@@ -447,9 +484,9 @@ public class RedstoneWireBlock extends Block {
    static {
       for(int i = 0; i <= 15; ++i) {
          float f = (float)i / 15.0F;
-         float f1 = f * 0.6F + (f > 0.0F ? 0.4F : 0.3F);
+         float f1 = f * 0.1F + (f > 0.0F ? 0.4F : 0.3F);
          float f2 = MathHelper.clamp(f * f * 0.7F - 0.5F, 0.0F, 1.0F);
-         float f3 = MathHelper.clamp(f * f * 0.6F - 0.7F, 0.0F, 1.0F);
+         float f3 = f * 0.3F + (f > 0.0F ? 0.4F : 0.3F);
          COLORS[i] = new Vector3f(f1, f2, f3);
       }
 
