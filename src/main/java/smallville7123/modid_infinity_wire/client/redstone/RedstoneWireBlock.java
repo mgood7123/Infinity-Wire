@@ -205,8 +205,8 @@ public class RedstoneWireBlock extends Block {
       return p_235552_3_.isFaceSturdy(p_235552_1_, p_235552_2_, Direction.UP) || p_235552_3_.is(Blocks.HOPPER);
    }
 
-   private void updatePowerStrength(World p_235547_1_, BlockPos p_235547_2_, BlockState p_235547_3_) {
-      int i = this.calculateTargetStrength(p_235547_1_, p_235547_2_, p_235547_3_);
+   private void updatePowerStrength(World p_235547_1_, BlockPos p_235547_2_, BlockState p_235547_3_, BlockPos p_235547_4_, BlockState p_235547_5_) {
+      int i = this.calculateTargetStrength(p_235547_1_, p_235547_2_, p_235547_3_, p_235547_4_, p_235547_5_);
       if (p_235547_3_.getValue(POWER) != i) {
          if (p_235547_1_.getBlockState(p_235547_2_) == p_235547_3_) {
             p_235547_1_.setBlock(p_235547_2_, p_235547_3_.setValue(POWER, Integer.valueOf(i)), 2);
@@ -226,56 +226,63 @@ public class RedstoneWireBlock extends Block {
 
    }
 
-   private int calculateTargetStrength(World p_235546_1_, BlockPos p_235546_2_, BlockState p_235546_3_) {
+   private int calculateTargetStrength(World p_235546_1_, BlockPos p_235546_2_, BlockState p_235546_3_, BlockPos p_235546_4_, BlockState p_235546_5_) {
       this.shouldSignal = false;
       int i = p_235546_1_.getBestNeighborSignal(p_235546_2_);
       this.shouldSignal = true;
       int j = 0;
-      BlockState b = p_235546_3_;
-      if (i == 15) {
-//         Main.LOGGER.info("FULL POWER");
-//         b = p_235546_3_.setValue(CONNECTED_TO_POWER, true);
-//         boolean connected = b.getValue(CONNECTED_TO_POWER);
-//         p_235546_1_.setBlock(p_235546_2_, b, 2 /* unknown */);
-//         Main.LOGGER.info("isConnectedToPower = " + connected);
-      } else {
-         for(Direction direction : Direction.Plane.HORIZONTAL) {
-            BlockPos blockpos = p_235546_2_.relative(direction);
-            BlockState blockstate = p_235546_1_.getBlockState(blockpos);
-            j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, blockstate));
-            BlockPos blockpos1 = p_235546_2_.above();
-            if (blockstate.isRedstoneConductor(p_235546_1_, blockpos) && !p_235546_1_.getBlockState(blockpos1).isRedstoneConductor(p_235546_1_, blockpos1)) {
-               j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, p_235546_1_.getBlockState(blockpos.above())));
-            } else if (!blockstate.isRedstoneConductor(p_235546_1_, blockpos)) {
-               j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, p_235546_1_.getBlockState(blockpos.below())));
+      Main.LOGGER.info("targets = ( " + p_235546_3_.getBlock().getRegistryName() + " + " + p_235546_2_ + " -> " + p_235546_5_.getBlock().getRegistryName() + " + " + p_235546_4_ + " )");
+      if (p_235546_2_ == p_235546_4_) {
+         if (p_235546_3_ == p_235546_5_) {
+            if (i == 15) {
+               Main.LOGGER.info("block power 15: " + p_235546_3_.getBlock().getRegistryName() + " from " + p_235546_5_.getBlock().getRegistryName());
+               if (!p_235546_5_.isSignalSource()) {
+                  p_235546_1_.setBlock(p_235546_2_, p_235546_3_.setValue(CONNECTED_TO_POWER, false), 2 /* unknown */);
+               } else {
+                  p_235546_1_.setBlock(p_235546_2_, p_235546_3_.setValue(CONNECTED_TO_POWER, true), 2 /* unknown */);
+               }
+            } else {
+               for (Direction direction : Direction.Plane.HORIZONTAL) {
+                  BlockPos blockpos = p_235546_2_.relative(direction);
+                  BlockState blockstate = p_235546_1_.getBlockState(blockpos);
+                  j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, blockstate));
+                  BlockPos blockpos1 = p_235546_2_.above();
+                  if (blockstate.isRedstoneConductor(p_235546_1_, blockpos) && !p_235546_1_.getBlockState(blockpos1).isRedstoneConductor(p_235546_1_, blockpos1)) {
+                     j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, p_235546_1_.getBlockState(blockpos.above())));
+                  } else if (!blockstate.isRedstoneConductor(p_235546_1_, blockpos)) {
+                     j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, p_235546_1_.getBlockState(blockpos.below())));
+                  }
+               }
             }
+            // do not decay power strength
+            Main.LOGGER.info("target strength = i " + i + ", j " + j + " ( " + p_235546_3_.getBlock().getRegistryName() + " -> " + p_235546_5_.getBlock().getRegistryName() + " )");
+            boolean connected = p_235546_1_.getBlockState(p_235546_2_).getValue(CONNECTED_TO_POWER);
+            Main.LOGGER.info("isConnectedToPower = " + connected);
+            return connected ? Math.max(i, j) : 0;
+         } else {
+            Main.LOGGER.info("target strength = 0 ( " + p_235546_3_.getBlock().getRegistryName() + " -> " + p_235546_5_.getBlock().getRegistryName() + " )");
+            return 0;
          }
+      } else {
+         Main.LOGGER.info("target strength = 0 ( " + p_235546_3_.getBlock().getRegistryName() + " -> " + p_235546_5_.getBlock().getRegistryName() + " )");
+         return 0;
       }
-
-      // do not decay power strength
-      Main.LOGGER.info("target strength = i " + i + ", j " + j);
-      boolean connected = b.getValue(CONNECTED_TO_POWER);
-      Main.LOGGER.info("isConnectedToPower = " + connected);
-      Main.LOGGER.info("block pos = " + b);
-      return connected ? Math.max(i, j) : 0;
    }
 
    private int getWireSignal(World p_235557_1_, BlockPos p_235557_2_, BlockState p_235557_3_) {
       if (p_235557_3_.is(this)) {
-         Main.LOGGER.info("p_235557_3_ (this) = " + p_235557_3_);
+         Main.LOGGER.info("p_235557_3_ (this) = " + p_235557_3_.getBlock().getRegistryName() + " + " + p_235557_2_);
          Main.LOGGER.info("p_235557_3_.isSignalSource() = " + p_235557_3_.isSignalSource());
          Main.LOGGER.info("p_235557_3_.isConnectedToPower = " + p_235557_3_.getValue(CONNECTED_TO_POWER));
          int power = p_235557_3_.getValue(POWER);
          Main.LOGGER.info("p_235557_3_ power = " + power);
-         Main.LOGGER.info("block pos = " + p_235557_2_);
          p_235557_3_.setValue(CONNECTED_TO_POWER, power != 0);
          return power;
       } else {
-         Main.LOGGER.info("p_235557_3_ = " + p_235557_3_);
+         Main.LOGGER.info("p_235557_3_ = " + p_235557_3_.getBlock().getRegistryName() + " + " + p_235557_2_);
          Main.LOGGER.info("p_235557_3_.isSignalSource() = " + p_235557_3_.isSignalSource());
          Optional<Integer> p = p_235557_3_.getOptionalValue(POWER);
          Main.LOGGER.info("p_235557_3_ has power = " + p.isPresent());
-         Main.LOGGER.info("block pos = " + p_235557_2_);
          int power = p.orElse(0);
          BlockState b = p_235557_1_.getBlockState(p_235557_2_);
          if (b.hasProperty(CONNECTED_TO_POWER)) {
@@ -298,7 +305,7 @@ public class RedstoneWireBlock extends Block {
 
    public void onPlace(BlockState p_220082_1_, World p_220082_2_, BlockPos p_220082_3_, BlockState p_220082_4_, boolean p_220082_5_) {
       if (!p_220082_4_.is(p_220082_1_.getBlock()) && !p_220082_2_.isClientSide) {
-         this.updatePowerStrength(p_220082_2_, p_220082_3_, p_220082_1_);
+         this.updatePowerStrength(p_220082_2_, p_220082_3_, p_220082_1_, p_220082_3_, p_220082_1_);
 
          for(Direction direction : Direction.Plane.VERTICAL) {
             p_220082_2_.updateNeighborsAt(p_220082_3_.relative(direction), this);
@@ -318,7 +325,7 @@ public class RedstoneWireBlock extends Block {
                p_196243_2_.updateNeighborsAt(p_196243_3_.relative(direction), this);
             }
 
-            this.updatePowerStrength(p_196243_2_, p_196243_3_, p_196243_1_);
+            this.updatePowerStrength(p_196243_2_, p_196243_3_, p_196243_1_, p_196243_3_, p_196243_4_);
             this.updateNeighborsOfNeighboringWires(p_196243_2_, p_196243_3_);
          }
       }
@@ -343,7 +350,7 @@ public class RedstoneWireBlock extends Block {
    public void neighborChanged(BlockState p_220069_1_, World p_220069_2_, BlockPos p_220069_3_, Block p_220069_4_, BlockPos p_220069_5_, boolean p_220069_6_) {
       if (!p_220069_2_.isClientSide) {
          if (p_220069_1_.canSurvive(p_220069_2_, p_220069_3_)) {
-            this.updatePowerStrength(p_220069_2_, p_220069_3_, p_220069_1_);
+            this.updatePowerStrength(p_220069_2_, p_220069_3_, p_220069_1_, p_220069_3_, p_220069_1_);
          } else {
             dropResources(p_220069_1_, p_220069_2_, p_220069_3_);
             p_220069_2_.removeBlock(p_220069_3_, false);
