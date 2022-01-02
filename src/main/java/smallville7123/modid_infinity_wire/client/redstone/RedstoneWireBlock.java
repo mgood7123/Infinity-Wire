@@ -1,16 +1,15 @@
 package smallville7123.modid_infinity_wire.client.redstone;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import net.minecraft.block.*;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.particles.RedstoneParticleData;
-import net.minecraft.state.BooleanProperty;
-import net.minecraft.state.EnumProperty;
+import net.minecraft.state.*;
 import net.minecraft.state.IntegerProperty;
-import net.minecraft.state.StateContainer;
 import net.minecraft.state.properties.BlockStateProperties;
 import net.minecraft.state.properties.RedstoneSide;
 import net.minecraft.util.*;
@@ -27,10 +26,59 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import smallville7123.modid_infinity_wire.Main;
 
 import javax.annotation.Nullable;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
+
+class IntegerValueProperty extends Property<Integer> {
+   private final Integer value;
+
+   protected IntegerValueProperty(String p_i45648_1_, int p_i45648_2_) {
+      super(p_i45648_1_, Integer.class);
+      if (p_i45648_2_ < 0) {
+         throw new IllegalArgumentException("value of " + p_i45648_1_ + " must be 0 or greater");
+      } else {
+         value = p_i45648_2_;
+      }
+   }
+
+   public Collection<Integer> getPossibleValues() {
+      // we must have 2 or more possible values
+      return ImmutableSet.of(value, value+1);
+   }
+
+   public boolean equals(Object p_equals_1_) {
+      if (this == p_equals_1_) {
+         return true;
+      } else if (p_equals_1_ instanceof Integer) {
+         return this.value.equals(p_equals_1_);
+      } else if (p_equals_1_ instanceof IntegerValueProperty && super.equals(p_equals_1_)) {
+         IntegerValueProperty integerproperty = (IntegerValueProperty)p_equals_1_;
+         return this.value.equals(integerproperty.value);
+      } else {
+         return false;
+      }
+   }
+
+   public int generateHashCode() {
+      return 31 * super.generateHashCode() + this.value.hashCode();
+   }
+
+   public static IntegerValueProperty create(String p_177719_0_, int p_177719_1_) {
+      return new IntegerValueProperty(p_177719_0_, p_177719_1_);
+   }
+
+   public Optional<Integer> getValue(String p_185929_1_) {
+      try {
+         Integer integer = Integer.valueOf(p_185929_1_);
+         return this.value.equals(integer) ? Optional.of(integer) : Optional.empty();
+      } catch (NumberFormatException numberformatexception) {
+         return Optional.empty();
+      }
+   }
+
+   public String getName(Integer p_177702_1_) {
+      return p_177702_1_.toString();
+   }
+}
 
 public class RedstoneWireBlock extends Block {
    public static final EnumProperty<RedstoneSide> NORTH = BlockStateProperties.NORTH_REDSTONE;
@@ -38,7 +86,7 @@ public class RedstoneWireBlock extends Block {
    public static final EnumProperty<RedstoneSide> SOUTH = BlockStateProperties.SOUTH_REDSTONE;
    public static final EnumProperty<RedstoneSide> WEST = BlockStateProperties.WEST_REDSTONE;
    public static final IntegerProperty POWER = BlockStateProperties.POWER;
-   public static final BooleanProperty CONNECTED_TO_POWER = BooleanProperty.create("connected_to_power");
+   public static final IntegerValueProperty CONNECTED_POWER_SOURCES = IntegerValueProperty.create("connected_power_sources", 0);
    public static final Map<Direction, EnumProperty<RedstoneSide>> PROPERTY_BY_DIRECTION = Maps.newEnumMap(ImmutableMap.of(Direction.NORTH, NORTH, Direction.EAST, EAST, Direction.SOUTH, SOUTH, Direction.WEST, WEST));
    private static final VoxelShape SHAPE_DOT = Block.box(3.0D, 0.0D, 3.0D, 13.0D, 1.0D, 13.0D);
    private static final Map<Direction, VoxelShape> SHAPES_FLOOR = Maps.newEnumMap(ImmutableMap.of(Direction.NORTH, Block.box(3.0D, 0.0D, 0.0D, 13.0D, 1.0D, 13.0D), Direction.SOUTH, Block.box(3.0D, 0.0D, 3.0D, 13.0D, 1.0D, 16.0D), Direction.EAST, Block.box(3.0D, 0.0D, 3.0D, 16.0D, 1.0D, 13.0D), Direction.WEST, Block.box(0.0D, 0.0D, 3.0D, 13.0D, 1.0D, 13.0D)));
@@ -50,7 +98,7 @@ public class RedstoneWireBlock extends Block {
 
    public RedstoneWireBlock(Properties p_i48344_1_) {
       super(p_i48344_1_);
-      this.registerDefaultState(this.stateDefinition.any().setValue(NORTH, RedstoneSide.NONE).setValue(EAST, RedstoneSide.NONE).setValue(SOUTH, RedstoneSide.NONE).setValue(WEST, RedstoneSide.NONE).setValue(POWER, Integer.valueOf(0)).setValue(CONNECTED_TO_POWER, Boolean.valueOf(true)));
+      this.registerDefaultState(this.stateDefinition.any().setValue(NORTH, RedstoneSide.NONE).setValue(EAST, RedstoneSide.NONE).setValue(SOUTH, RedstoneSide.NONE).setValue(WEST, RedstoneSide.NONE).setValue(POWER, 0).setValue(CONNECTED_POWER_SOURCES, 0));
       this.crossState = this.defaultBlockState().setValue(NORTH, RedstoneSide.SIDE).setValue(EAST, RedstoneSide.SIDE).setValue(SOUTH, RedstoneSide.SIDE).setValue(WEST, RedstoneSide.SIDE);
 
       for(BlockState blockstate : this.getStateDefinition().getPossibleStates()) {
@@ -77,7 +125,7 @@ public class RedstoneWireBlock extends Block {
    }
 
    public VoxelShape getShape(BlockState p_220053_1_, IBlockReader p_220053_2_, BlockPos p_220053_3_, ISelectionContext p_220053_4_) {
-      return this.SHAPES_CACHE.get(p_220053_1_.setValue(POWER, Integer.valueOf(0)));
+      return this.SHAPES_CACHE.get(p_220053_1_.setValue(POWER, 0));
    }
 
    public BlockState getStateForPlacement(BlockItemUseContext p_196258_1_) {
@@ -209,7 +257,7 @@ public class RedstoneWireBlock extends Block {
       int i = this.calculateTargetStrength(p_235547_1_, p_235547_2_, p_235547_3_, p_235547_4_, p_235547_5_);
       if (p_235547_3_.getValue(POWER) != i) {
          if (p_235547_1_.getBlockState(p_235547_2_) == p_235547_3_) {
-            p_235547_1_.setBlock(p_235547_2_, p_235547_3_.setValue(POWER, Integer.valueOf(i)), 2);
+            p_235547_1_.setBlock(p_235547_2_, p_235547_3_.setValue(POWER, i), 2);
          }
 
          Set<BlockPos> set = Sets.newHashSet();
@@ -237,9 +285,9 @@ public class RedstoneWireBlock extends Block {
             if (i == 15) {
                Main.LOGGER.info("block power 15: " + p_235546_3_.getBlock().getRegistryName() + " from " + p_235546_5_.getBlock().getRegistryName());
                if (!p_235546_5_.isSignalSource()) {
-                  p_235546_1_.setBlock(p_235546_2_, p_235546_3_.setValue(CONNECTED_TO_POWER, false), 2 /* unknown */);
+                  p_235546_1_.setBlock(p_235546_2_, p_235546_3_.setValue(CONNECTED_POWER_SOURCES, 0), 2 /* unknown */);
                } else {
-                  p_235546_1_.setBlock(p_235546_2_, p_235546_3_.setValue(CONNECTED_TO_POWER, true), 2 /* unknown */);
+                  p_235546_1_.setBlock(p_235546_2_, p_235546_3_.setValue(CONNECTED_POWER_SOURCES, 0), 2 /* unknown */);
                }
             } else {
                for (Direction direction : Direction.Plane.HORIZONTAL) {
@@ -256,7 +304,7 @@ public class RedstoneWireBlock extends Block {
             }
             // do not decay power strength
             Main.LOGGER.info("target strength = i " + i + ", j " + j + " ( " + p_235546_3_.getBlock().getRegistryName() + " -> " + p_235546_5_.getBlock().getRegistryName() + " )");
-            boolean connected = p_235546_1_.getBlockState(p_235546_2_).getValue(CONNECTED_TO_POWER);
+            boolean connected = p_235546_1_.getBlockState(p_235546_2_).getValue(CONNECTED_POWER_SOURCES) != 0;
             Main.LOGGER.info("isConnectedToPower = " + connected);
             return connected ? Math.max(i, j) : 0;
          } else {
@@ -272,11 +320,10 @@ public class RedstoneWireBlock extends Block {
    private int getWireSignal(World p_235557_1_, BlockPos p_235557_2_, BlockState p_235557_3_) {
       if (p_235557_3_.is(this)) {
          Main.LOGGER.info("p_235557_3_ (this) = " + p_235557_3_.getBlock().getRegistryName() + " + " + p_235557_2_);
-         Main.LOGGER.info("p_235557_3_.isSignalSource() = " + p_235557_3_.isSignalSource());
-         Main.LOGGER.info("p_235557_3_.isConnectedToPower = " + p_235557_3_.getValue(CONNECTED_TO_POWER));
+         Main.LOGGER.info("p_235557_3_.CONNECTED_POWER_SOURCES = " + p_235557_3_.getValue(CONNECTED_POWER_SOURCES));
          int power = p_235557_3_.getValue(POWER);
          Main.LOGGER.info("p_235557_3_ power = " + power);
-         p_235557_3_.setValue(CONNECTED_TO_POWER, power != 0);
+         p_235557_3_.setValue(CONNECTED_POWER_SOURCES, power != 0 ? 1 : 0);
          return power;
       } else {
          Main.LOGGER.info("p_235557_3_ = " + p_235557_3_.getBlock().getRegistryName() + " + " + p_235557_2_);
@@ -285,8 +332,8 @@ public class RedstoneWireBlock extends Block {
          Main.LOGGER.info("p_235557_3_ has power = " + p.isPresent());
          int power = p.orElse(0);
          BlockState b = p_235557_1_.getBlockState(p_235557_2_);
-         if (b.hasProperty(CONNECTED_TO_POWER)) {
-            b.setValue(CONNECTED_TO_POWER, power != 0);
+         if (b.hasProperty(CONNECTED_POWER_SOURCES)) {
+            b.setValue(CONNECTED_POWER_SOURCES, power != 0 ? 1 : 0);
          }
          return power;
       }
@@ -458,7 +505,7 @@ public class RedstoneWireBlock extends Block {
    }
 
    protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> p_206840_1_) {
-      p_206840_1_.add(NORTH, EAST, SOUTH, WEST, POWER, CONNECTED_TO_POWER);
+      p_206840_1_.add(NORTH, EAST, SOUTH, WEST, POWER, CONNECTED_POWER_SOURCES);
    }
 
    public ActionResultType use(BlockState p_225533_1_, World p_225533_2_, BlockPos p_225533_3_, PlayerEntity p_225533_4_, Hand p_225533_5_, BlockRayTraceResult p_225533_6_) {
