@@ -31,6 +31,7 @@ import java.util.Random;
 import java.util.Set;
 
 public class RedstoneWireBlock extends Block {
+   private static final RedstonePowerManagement redstonePowerManagement = new RedstonePowerManagement();
    public static final EnumProperty<RedstoneSide> NORTH = BlockStateProperties.NORTH_REDSTONE;
    public static final EnumProperty<RedstoneSide> EAST = BlockStateProperties.EAST_REDSTONE;
    public static final EnumProperty<RedstoneSide> SOUTH = BlockStateProperties.SOUTH_REDSTONE;
@@ -202,7 +203,7 @@ public class RedstoneWireBlock extends Block {
       return p_235552_3_.isFaceSturdy(p_235552_1_, p_235552_2_, Direction.UP) || p_235552_3_.is(Blocks.HOPPER);
    }
 
-   private void updatePowerStrength(World p_235547_1_, BlockPos p_235547_2_, BlockState p_235547_3_) {
+   void updatePowerStrength(World p_235547_1_, BlockPos p_235547_2_, BlockState p_235547_3_) {
       int i = this.calculateTargetStrength(p_235547_1_, p_235547_2_);
       if (p_235547_3_.getValue(POWER) != i) {
          if (p_235547_1_.getBlockState(p_235547_2_) == p_235547_3_) {
@@ -254,7 +255,6 @@ public class RedstoneWireBlock extends Block {
          Main.LOGGER.info("p_235557_1_ power = " + power);
          return power + 0;
       } else {
-         Main.LOGGER.info("p_235557_1_ (other) = " + p_235557_1_.getBlock().getRegistryName() + " + " + p_235557_2_);
          return 0;
       }
    }
@@ -272,13 +272,7 @@ public class RedstoneWireBlock extends Block {
 
    public void onPlace(BlockState p_220082_1_, World p_220082_2_, BlockPos p_220082_3_, BlockState p_220082_4_, boolean p_220082_5_) {
       if (!p_220082_4_.is(p_220082_1_.getBlock()) && !p_220082_2_.isClientSide) {
-         this.updatePowerStrength(p_220082_2_, p_220082_3_, p_220082_1_);
-
-         for(Direction direction : Direction.Plane.VERTICAL) {
-            p_220082_2_.updateNeighborsAt(p_220082_3_.relative(direction), this);
-         }
-
-         this.updateNeighborsOfNeighboringWires(p_220082_2_, p_220082_3_);
+         redstonePowerManagement.onPlace(p_220082_2_, p_220082_3_, p_220082_1_);
       }
    }
 
@@ -286,17 +280,12 @@ public class RedstoneWireBlock extends Block {
       if (!p_196243_5_ && !p_196243_1_.is(p_196243_4_.getBlock())) {
          super.onRemove(p_196243_1_, p_196243_2_, p_196243_3_, p_196243_4_, p_196243_5_);
          if (!p_196243_2_.isClientSide) {
-            for(Direction direction : Direction.values()) {
-               p_196243_2_.updateNeighborsAt(p_196243_3_.relative(direction), this);
-            }
-
-            this.updatePowerStrength(p_196243_2_, p_196243_3_, p_196243_1_);
-            this.updateNeighborsOfNeighboringWires(p_196243_2_, p_196243_3_);
+            redstonePowerManagement.onRemove(p_196243_2_, p_196243_3_, p_196243_1_);
          }
       }
    }
 
-   private void updateNeighborsOfNeighboringWires(World p_235553_1_, BlockPos p_235553_2_) {
+   void updateNeighborsOfNeighboringWires(World p_235553_1_, BlockPos p_235553_2_) {
       for(Direction direction : Direction.Plane.HORIZONTAL) {
          this.checkCornerChangeAt(p_235553_1_, p_235553_2_.relative(direction));
       }
@@ -314,13 +303,7 @@ public class RedstoneWireBlock extends Block {
 
    public void neighborChanged(BlockState p_220069_1_, World p_220069_2_, BlockPos p_220069_3_, Block p_220069_4_, BlockPos p_220069_5_, boolean p_220069_6_) {
       if (!p_220069_2_.isClientSide) {
-         if (p_220069_1_.canSurvive(p_220069_2_, p_220069_3_)) {
-            this.updatePowerStrength(p_220069_2_, p_220069_3_, p_220069_1_);
-         } else {
-            dropResources(p_220069_1_, p_220069_2_, p_220069_3_);
-            p_220069_2_.removeBlock(p_220069_3_, false);
-         }
-
+         redstonePowerManagement.neighborChanged(p_220069_2_, p_220069_3_, p_220069_1_);
       }
    }
 
@@ -342,7 +325,7 @@ public class RedstoneWireBlock extends Block {
    }
 
    protected static boolean canConnectTo(BlockState p_176343_0_, IBlockReader world, BlockPos pos, @Nullable Direction p_176343_1_) {
-      if (p_176343_0_.is(Blocks.REDSTONE_WIRE)) {
+      if (p_176343_0_.is(Blocks.REDSTONE_WIRE) || p_176343_0_.is(StartupCommon.redstoneWireBlock)) {
          return true;
       } else if (p_176343_0_.is(Blocks.REPEATER)) {
          Direction direction = p_176343_0_.getValue(RepeaterBlock.FACING);
