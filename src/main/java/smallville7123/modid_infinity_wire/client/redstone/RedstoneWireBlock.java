@@ -1,15 +1,15 @@
 package smallville7123.modid_infinity_wire.client.redstone;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import net.minecraft.block.*;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.particles.RedstoneParticleData;
-import net.minecraft.state.*;
+import net.minecraft.state.EnumProperty;
 import net.minecraft.state.IntegerProperty;
+import net.minecraft.state.StateContainer;
 import net.minecraft.state.properties.BlockStateProperties;
 import net.minecraft.state.properties.RedstoneSide;
 import net.minecraft.util.*;
@@ -26,59 +26,9 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import smallville7123.modid_infinity_wire.Main;
 
 import javax.annotation.Nullable;
-import java.util.*;
-
-class IntegerValueProperty extends Property<Integer> {
-   private final Integer value;
-
-   protected IntegerValueProperty(String p_i45648_1_, int p_i45648_2_) {
-      super(p_i45648_1_, Integer.class);
-      if (p_i45648_2_ < 0) {
-         throw new IllegalArgumentException("value of " + p_i45648_1_ + " must be 0 or greater");
-      } else {
-         value = p_i45648_2_;
-      }
-   }
-
-   public Collection<Integer> getPossibleValues() {
-      // we must have 2 or more possible values
-      return ImmutableSet.of(value, value+1);
-   }
-
-   public boolean equals(Object p_equals_1_) {
-      if (this == p_equals_1_) {
-         return true;
-      } else if (p_equals_1_ instanceof Integer) {
-         return this.value.equals(p_equals_1_);
-      } else if (p_equals_1_ instanceof IntegerValueProperty && super.equals(p_equals_1_)) {
-         IntegerValueProperty integerproperty = (IntegerValueProperty)p_equals_1_;
-         return this.value.equals(integerproperty.value);
-      } else {
-         return false;
-      }
-   }
-
-   public int generateHashCode() {
-      return 31 * super.generateHashCode() + this.value.hashCode();
-   }
-
-   public static IntegerValueProperty create(String p_177719_0_, int p_177719_1_) {
-      return new IntegerValueProperty(p_177719_0_, p_177719_1_);
-   }
-
-   public Optional<Integer> getValue(String p_185929_1_) {
-      try {
-         Integer integer = Integer.valueOf(p_185929_1_);
-         return this.value.equals(integer) ? Optional.of(integer) : Optional.empty();
-      } catch (NumberFormatException numberformatexception) {
-         return Optional.empty();
-      }
-   }
-
-   public String getName(Integer p_177702_1_) {
-      return p_177702_1_.toString();
-   }
-}
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 public class RedstoneWireBlock extends Block {
    public static final EnumProperty<RedstoneSide> NORTH = BlockStateProperties.NORTH_REDSTONE;
@@ -86,7 +36,6 @@ public class RedstoneWireBlock extends Block {
    public static final EnumProperty<RedstoneSide> SOUTH = BlockStateProperties.SOUTH_REDSTONE;
    public static final EnumProperty<RedstoneSide> WEST = BlockStateProperties.WEST_REDSTONE;
    public static final IntegerProperty POWER = BlockStateProperties.POWER;
-   public static final IntegerValueProperty CONNECTED_POWER_SOURCES = IntegerValueProperty.create("connected_power_sources", 0);
    public static final Map<Direction, EnumProperty<RedstoneSide>> PROPERTY_BY_DIRECTION = Maps.newEnumMap(ImmutableMap.of(Direction.NORTH, NORTH, Direction.EAST, EAST, Direction.SOUTH, SOUTH, Direction.WEST, WEST));
    private static final VoxelShape SHAPE_DOT = Block.box(3.0D, 0.0D, 3.0D, 13.0D, 1.0D, 13.0D);
    private static final Map<Direction, VoxelShape> SHAPES_FLOOR = Maps.newEnumMap(ImmutableMap.of(Direction.NORTH, Block.box(3.0D, 0.0D, 0.0D, 13.0D, 1.0D, 13.0D), Direction.SOUTH, Block.box(3.0D, 0.0D, 3.0D, 13.0D, 1.0D, 16.0D), Direction.EAST, Block.box(3.0D, 0.0D, 3.0D, 16.0D, 1.0D, 13.0D), Direction.WEST, Block.box(0.0D, 0.0D, 3.0D, 13.0D, 1.0D, 13.0D)));
@@ -98,7 +47,7 @@ public class RedstoneWireBlock extends Block {
 
    public RedstoneWireBlock(Properties p_i48344_1_) {
       super(p_i48344_1_);
-      this.registerDefaultState(this.stateDefinition.any().setValue(NORTH, RedstoneSide.NONE).setValue(EAST, RedstoneSide.NONE).setValue(SOUTH, RedstoneSide.NONE).setValue(WEST, RedstoneSide.NONE).setValue(POWER, 0).setValue(CONNECTED_POWER_SOURCES, 0));
+      this.registerDefaultState(this.stateDefinition.any().setValue(NORTH, RedstoneSide.NONE).setValue(EAST, RedstoneSide.NONE).setValue(SOUTH, RedstoneSide.NONE).setValue(WEST, RedstoneSide.NONE).setValue(POWER, Integer.valueOf(0)));
       this.crossState = this.defaultBlockState().setValue(NORTH, RedstoneSide.SIDE).setValue(EAST, RedstoneSide.SIDE).setValue(SOUTH, RedstoneSide.SIDE).setValue(WEST, RedstoneSide.SIDE);
 
       for(BlockState blockstate : this.getStateDefinition().getPossibleStates()) {
@@ -125,7 +74,7 @@ public class RedstoneWireBlock extends Block {
    }
 
    public VoxelShape getShape(BlockState p_220053_1_, IBlockReader p_220053_2_, BlockPos p_220053_3_, ISelectionContext p_220053_4_) {
-      return this.SHAPES_CACHE.get(p_220053_1_.setValue(POWER, 0));
+      return this.SHAPES_CACHE.get(p_220053_1_.setValue(POWER, Integer.valueOf(0)));
    }
 
    public BlockState getStateForPlacement(BlockItemUseContext p_196258_1_) {
@@ -253,11 +202,11 @@ public class RedstoneWireBlock extends Block {
       return p_235552_3_.isFaceSturdy(p_235552_1_, p_235552_2_, Direction.UP) || p_235552_3_.is(Blocks.HOPPER);
    }
 
-   private void updatePowerStrength(World p_235547_1_, BlockPos p_235547_2_, BlockState p_235547_3_, BlockPos p_235547_4_, BlockState p_235547_5_) {
-      int i = this.calculateTargetStrength(p_235547_1_, p_235547_2_, p_235547_3_, p_235547_4_, p_235547_5_);
+   private void updatePowerStrength(World p_235547_1_, BlockPos p_235547_2_, BlockState p_235547_3_) {
+      int i = this.calculateTargetStrength(p_235547_1_, p_235547_2_);
       if (p_235547_3_.getValue(POWER) != i) {
          if (p_235547_1_.getBlockState(p_235547_2_) == p_235547_3_) {
-            p_235547_1_.setBlock(p_235547_2_, p_235547_3_.setValue(POWER, i), 2);
+            p_235547_1_.setBlock(p_235547_2_, p_235547_3_.setValue(POWER, Integer.valueOf(i)), 2);
          }
 
          Set<BlockPos> set = Sets.newHashSet();
@@ -274,68 +223,39 @@ public class RedstoneWireBlock extends Block {
 
    }
 
-   private int calculateTargetStrength(World p_235546_1_, BlockPos p_235546_2_, BlockState p_235546_3_, BlockPos p_235546_4_, BlockState p_235546_5_) {
+   private int calculateTargetStrength(World p_235546_1_, BlockPos p_235546_2_) {
       this.shouldSignal = false;
       int i = p_235546_1_.getBestNeighborSignal(p_235546_2_);
       this.shouldSignal = true;
       int j = 0;
-      Main.LOGGER.info("targets = ( " + p_235546_3_.getBlock().getRegistryName() + " + " + p_235546_2_ + " -> " + p_235546_5_.getBlock().getRegistryName() + " + " + p_235546_4_ + " )");
-      if (p_235546_2_ == p_235546_4_) {
-         if (p_235546_3_ == p_235546_5_) {
-            if (i == 15) {
-               Main.LOGGER.info("block power 15: " + p_235546_3_.getBlock().getRegistryName() + " from " + p_235546_5_.getBlock().getRegistryName());
-               if (!p_235546_5_.isSignalSource()) {
-                  p_235546_1_.setBlock(p_235546_2_, p_235546_3_.setValue(CONNECTED_POWER_SOURCES, 0), 2 /* unknown */);
-               } else {
-                  p_235546_1_.setBlock(p_235546_2_, p_235546_3_.setValue(CONNECTED_POWER_SOURCES, 0), 2 /* unknown */);
-               }
-            } else {
-               for (Direction direction : Direction.Plane.HORIZONTAL) {
-                  BlockPos blockpos = p_235546_2_.relative(direction);
-                  BlockState blockstate = p_235546_1_.getBlockState(blockpos);
-                  j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, blockstate));
-                  BlockPos blockpos1 = p_235546_2_.above();
-                  if (blockstate.isRedstoneConductor(p_235546_1_, blockpos) && !p_235546_1_.getBlockState(blockpos1).isRedstoneConductor(p_235546_1_, blockpos1)) {
-                     j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, p_235546_1_.getBlockState(blockpos.above())));
-                  } else if (!blockstate.isRedstoneConductor(p_235546_1_, blockpos)) {
-                     j = Math.max(j, this.getWireSignal(p_235546_1_, p_235546_2_, p_235546_1_.getBlockState(blockpos.below())));
-                  }
-               }
+      if (i < 15) {
+         for(Direction direction : Direction.Plane.HORIZONTAL) {
+            BlockPos blockpos = p_235546_2_.relative(direction);
+            BlockState blockstate = p_235546_1_.getBlockState(blockpos);
+            j = Math.max(j, this.getWireSignal(blockstate, blockpos));
+            BlockPos blockpos1 = p_235546_2_.above();
+            if (blockstate.isRedstoneConductor(p_235546_1_, blockpos) && !p_235546_1_.getBlockState(blockpos1).isRedstoneConductor(p_235546_1_, blockpos1)) {
+               BlockPos b = blockpos.above();
+               j = Math.max(j, this.getWireSignal(p_235546_1_.getBlockState(b), b));
+            } else if (!blockstate.isRedstoneConductor(p_235546_1_, blockpos)) {
+               BlockPos b = blockpos.below();
+               j = Math.max(j, this.getWireSignal(p_235546_1_.getBlockState(b), b));
             }
-            // do not decay power strength
-            Main.LOGGER.info("target strength = i " + i + ", j " + j + " ( " + p_235546_3_.getBlock().getRegistryName() + " -> " + p_235546_5_.getBlock().getRegistryName() + " )");
-            boolean connected = p_235546_1_.getBlockState(p_235546_2_).getValue(CONNECTED_POWER_SOURCES) != 0;
-            Main.LOGGER.info("isConnectedToPower = " + connected);
-            return connected ? Math.max(i, j) : 0;
-         } else {
-            Main.LOGGER.info("target strength = 0 ( " + p_235546_3_.getBlock().getRegistryName() + " -> " + p_235546_5_.getBlock().getRegistryName() + " )");
-            return 0;
          }
-      } else {
-         Main.LOGGER.info("target strength = 0 ( " + p_235546_3_.getBlock().getRegistryName() + " -> " + p_235546_5_.getBlock().getRegistryName() + " )");
-         return 0;
       }
+
+      return Math.max(i, j - 1);
    }
 
-   private int getWireSignal(World p_235557_1_, BlockPos p_235557_2_, BlockState p_235557_3_) {
-      if (p_235557_3_.is(this)) {
-         Main.LOGGER.info("p_235557_3_ (this) = " + p_235557_3_.getBlock().getRegistryName() + " + " + p_235557_2_);
-         Main.LOGGER.info("p_235557_3_.CONNECTED_POWER_SOURCES = " + p_235557_3_.getValue(CONNECTED_POWER_SOURCES));
-         int power = p_235557_3_.getValue(POWER);
-         Main.LOGGER.info("p_235557_3_ power = " + power);
-         p_235557_3_.setValue(CONNECTED_POWER_SOURCES, power != 0 ? 1 : 0);
-         return power;
+   private int getWireSignal(BlockState p_235557_1_, BlockPos p_235557_2_) {
+      if (p_235557_1_.is(this)) {
+         Main.LOGGER.info("p_235557_1_ (this) = " + p_235557_1_.getBlock().getRegistryName() + " + " + p_235557_2_);
+         int power = p_235557_1_.getValue(POWER);
+         Main.LOGGER.info("p_235557_1_ power = " + power);
+         return power + 0;
       } else {
-         Main.LOGGER.info("p_235557_3_ = " + p_235557_3_.getBlock().getRegistryName() + " + " + p_235557_2_);
-         Main.LOGGER.info("p_235557_3_.isSignalSource() = " + p_235557_3_.isSignalSource());
-         Optional<Integer> p = p_235557_3_.getOptionalValue(POWER);
-         Main.LOGGER.info("p_235557_3_ has power = " + p.isPresent());
-         int power = p.orElse(0);
-         BlockState b = p_235557_1_.getBlockState(p_235557_2_);
-         if (b.hasProperty(CONNECTED_POWER_SOURCES)) {
-            b.setValue(CONNECTED_POWER_SOURCES, power != 0 ? 1 : 0);
-         }
-         return power;
+         Main.LOGGER.info("p_235557_1_ (other) = " + p_235557_1_.getBlock().getRegistryName() + " + " + p_235557_2_);
+         return 0;
       }
    }
 
@@ -352,7 +272,7 @@ public class RedstoneWireBlock extends Block {
 
    public void onPlace(BlockState p_220082_1_, World p_220082_2_, BlockPos p_220082_3_, BlockState p_220082_4_, boolean p_220082_5_) {
       if (!p_220082_4_.is(p_220082_1_.getBlock()) && !p_220082_2_.isClientSide) {
-         this.updatePowerStrength(p_220082_2_, p_220082_3_, p_220082_1_, p_220082_3_, p_220082_1_);
+         this.updatePowerStrength(p_220082_2_, p_220082_3_, p_220082_1_);
 
          for(Direction direction : Direction.Plane.VERTICAL) {
             p_220082_2_.updateNeighborsAt(p_220082_3_.relative(direction), this);
@@ -364,15 +284,13 @@ public class RedstoneWireBlock extends Block {
 
    public void onRemove(BlockState p_196243_1_, World p_196243_2_, BlockPos p_196243_3_, BlockState p_196243_4_, boolean p_196243_5_) {
       if (!p_196243_5_ && !p_196243_1_.is(p_196243_4_.getBlock())) {
-         Main.LOGGER.info("Remove: " + p_196243_1_.getBlock().getRegistryName() + " -> " + p_196243_4_.getBlock().getRegistryName());
-
          super.onRemove(p_196243_1_, p_196243_2_, p_196243_3_, p_196243_4_, p_196243_5_);
          if (!p_196243_2_.isClientSide) {
             for(Direction direction : Direction.values()) {
                p_196243_2_.updateNeighborsAt(p_196243_3_.relative(direction), this);
             }
 
-            this.updatePowerStrength(p_196243_2_, p_196243_3_, p_196243_1_, p_196243_3_, p_196243_4_);
+            this.updatePowerStrength(p_196243_2_, p_196243_3_, p_196243_1_);
             this.updateNeighborsOfNeighboringWires(p_196243_2_, p_196243_3_);
          }
       }
@@ -397,7 +315,7 @@ public class RedstoneWireBlock extends Block {
    public void neighborChanged(BlockState p_220069_1_, World p_220069_2_, BlockPos p_220069_3_, Block p_220069_4_, BlockPos p_220069_5_, boolean p_220069_6_) {
       if (!p_220069_2_.isClientSide) {
          if (p_220069_1_.canSurvive(p_220069_2_, p_220069_3_)) {
-            this.updatePowerStrength(p_220069_2_, p_220069_3_, p_220069_1_, p_220069_3_, p_220069_1_);
+            this.updatePowerStrength(p_220069_2_, p_220069_3_, p_220069_1_);
          } else {
             dropResources(p_220069_1_, p_220069_2_, p_220069_3_);
             p_220069_2_.removeBlock(p_220069_3_, false);
@@ -466,14 +384,14 @@ public class RedstoneWireBlock extends Block {
          for(Direction direction : Direction.Plane.HORIZONTAL) {
             RedstoneSide redstoneside = p_180655_1_.getValue(PROPERTY_BY_DIRECTION.get(direction));
             switch(redstoneside) {
-            case UP:
-               this.spawnParticlesAlongLine(p_180655_2_, p_180655_4_, p_180655_3_, COLORS[i], direction, Direction.UP, -0.5F, 0.5F);
-            case SIDE:
-               this.spawnParticlesAlongLine(p_180655_2_, p_180655_4_, p_180655_3_, COLORS[i], Direction.DOWN, direction, 0.0F, 0.5F);
-               break;
-            case NONE:
-            default:
-               this.spawnParticlesAlongLine(p_180655_2_, p_180655_4_, p_180655_3_, COLORS[i], Direction.DOWN, direction, 0.0F, 0.3F);
+               case UP:
+                  this.spawnParticlesAlongLine(p_180655_2_, p_180655_4_, p_180655_3_, COLORS[i], direction, Direction.UP, -0.5F, 0.5F);
+               case SIDE:
+                  this.spawnParticlesAlongLine(p_180655_2_, p_180655_4_, p_180655_3_, COLORS[i], Direction.DOWN, direction, 0.0F, 0.5F);
+                  break;
+               case NONE:
+               default:
+                  this.spawnParticlesAlongLine(p_180655_2_, p_180655_4_, p_180655_3_, COLORS[i], Direction.DOWN, direction, 0.0F, 0.3F);
             }
          }
 
@@ -482,30 +400,30 @@ public class RedstoneWireBlock extends Block {
 
    public BlockState rotate(BlockState p_185499_1_, Rotation p_185499_2_) {
       switch(p_185499_2_) {
-      case CLOCKWISE_180:
-         return p_185499_1_.setValue(NORTH, p_185499_1_.getValue(SOUTH)).setValue(EAST, p_185499_1_.getValue(WEST)).setValue(SOUTH, p_185499_1_.getValue(NORTH)).setValue(WEST, p_185499_1_.getValue(EAST));
-      case COUNTERCLOCKWISE_90:
-         return p_185499_1_.setValue(NORTH, p_185499_1_.getValue(EAST)).setValue(EAST, p_185499_1_.getValue(SOUTH)).setValue(SOUTH, p_185499_1_.getValue(WEST)).setValue(WEST, p_185499_1_.getValue(NORTH));
-      case CLOCKWISE_90:
-         return p_185499_1_.setValue(NORTH, p_185499_1_.getValue(WEST)).setValue(EAST, p_185499_1_.getValue(NORTH)).setValue(SOUTH, p_185499_1_.getValue(EAST)).setValue(WEST, p_185499_1_.getValue(SOUTH));
-      default:
-         return p_185499_1_;
+         case CLOCKWISE_180:
+            return p_185499_1_.setValue(NORTH, p_185499_1_.getValue(SOUTH)).setValue(EAST, p_185499_1_.getValue(WEST)).setValue(SOUTH, p_185499_1_.getValue(NORTH)).setValue(WEST, p_185499_1_.getValue(EAST));
+         case COUNTERCLOCKWISE_90:
+            return p_185499_1_.setValue(NORTH, p_185499_1_.getValue(EAST)).setValue(EAST, p_185499_1_.getValue(SOUTH)).setValue(SOUTH, p_185499_1_.getValue(WEST)).setValue(WEST, p_185499_1_.getValue(NORTH));
+         case CLOCKWISE_90:
+            return p_185499_1_.setValue(NORTH, p_185499_1_.getValue(WEST)).setValue(EAST, p_185499_1_.getValue(NORTH)).setValue(SOUTH, p_185499_1_.getValue(EAST)).setValue(WEST, p_185499_1_.getValue(SOUTH));
+         default:
+            return p_185499_1_;
       }
    }
 
    public BlockState mirror(BlockState p_185471_1_, Mirror p_185471_2_) {
       switch(p_185471_2_) {
-      case LEFT_RIGHT:
-         return p_185471_1_.setValue(NORTH, p_185471_1_.getValue(SOUTH)).setValue(SOUTH, p_185471_1_.getValue(NORTH));
-      case FRONT_BACK:
-         return p_185471_1_.setValue(EAST, p_185471_1_.getValue(WEST)).setValue(WEST, p_185471_1_.getValue(EAST));
-      default:
-         return super.mirror(p_185471_1_, p_185471_2_);
+         case LEFT_RIGHT:
+            return p_185471_1_.setValue(NORTH, p_185471_1_.getValue(SOUTH)).setValue(SOUTH, p_185471_1_.getValue(NORTH));
+         case FRONT_BACK:
+            return p_185471_1_.setValue(EAST, p_185471_1_.getValue(WEST)).setValue(WEST, p_185471_1_.getValue(EAST));
+         default:
+            return super.mirror(p_185471_1_, p_185471_2_);
       }
    }
 
    protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> p_206840_1_) {
-      p_206840_1_.add(NORTH, EAST, SOUTH, WEST, POWER, CONNECTED_POWER_SOURCES);
+      p_206840_1_.add(NORTH, EAST, SOUTH, WEST, POWER);
    }
 
    public ActionResultType use(BlockState p_225533_1_, World p_225533_2_, BlockPos p_225533_3_, PlayerEntity p_225533_4_, Hand p_225533_5_, BlockRayTraceResult p_225533_6_) {
