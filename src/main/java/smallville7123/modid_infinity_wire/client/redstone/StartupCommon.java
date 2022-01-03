@@ -6,7 +6,12 @@ import net.minecraft.block.material.Material;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
+import net.minecraft.world.IWorld;
+import net.minecraft.world.World;
+import net.minecraft.world.server.ServerWorld;
+import net.minecraft.world.storage.DimensionSavedDataManager;
 import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import smallville7123.modid_infinity_wire.Main;
@@ -27,8 +32,8 @@ public class StartupCommon
   public static void onBlocksRegistration(final RegistryEvent.Register<Block> blockRegisterEvent) {
     Main.LOGGER.info("Registering blocks");
 
-    redstoneWireBlock = new RedstoneWireBlock(AbstractBlock.Properties.of(Material.DECORATION).noCollission().instabreak())
-            .setRegistryName(Main.MODID, "infinity_wire");
+    redstoneWireBlock = new RedstoneWireBlock(AbstractBlock.Properties.of(Material.DECORATION).noCollission().instabreak());
+    redstoneWireBlock.setRegistryName(Main.MODID, "infinity_wire");
     blockRegisterEvent.getRegistry().register(redstoneWireBlock);
 
     Main.LOGGER.info("Registered blocks");

@@ -21,6 +21,7 @@ import net.minecraft.util.math.shapes.VoxelShape;
 import net.minecraft.util.math.shapes.VoxelShapes;
 import net.minecraft.util.math.vector.Vector3f;
 import net.minecraft.world.*;
+import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import smallville7123.modid_infinity_wire.Main;
@@ -31,7 +32,6 @@ import java.util.Random;
 import java.util.Set;
 
 public class RedstoneWireBlock extends Block {
-   private static final RedstonePowerManagement redstonePowerManagement = new RedstonePowerManagement();
    public static final EnumProperty<RedstoneSide> NORTH = BlockStateProperties.NORTH_REDSTONE;
    public static final EnumProperty<RedstoneSide> EAST = BlockStateProperties.EAST_REDSTONE;
    public static final EnumProperty<RedstoneSide> SOUTH = BlockStateProperties.SOUTH_REDSTONE;
@@ -272,7 +272,13 @@ public class RedstoneWireBlock extends Block {
 
    public void onPlace(BlockState p_220082_1_, World p_220082_2_, BlockPos p_220082_3_, BlockState p_220082_4_, boolean p_220082_5_) {
       if (!p_220082_4_.is(p_220082_1_.getBlock()) && !p_220082_2_.isClientSide) {
-         redstonePowerManagement.onPlace(p_220082_2_, p_220082_3_, p_220082_1_);
+         if (p_220082_2_ instanceof ServerWorld) {
+            ServerWorld serverWorld = (ServerWorld) p_220082_2_;
+            RedstonePowerManagement redstonePowerManagement = serverWorld.getDataStorage().computeIfAbsent(RedstonePowerManagement::new, RedstonePowerManagement.NAME);
+            if (redstonePowerManagement.onPlace(p_220082_2_, p_220082_3_, p_220082_1_)) {
+               redstonePowerManagement.setDirty();
+            }
+         }
       }
    }
 
@@ -280,7 +286,13 @@ public class RedstoneWireBlock extends Block {
       if (!p_196243_5_ && !p_196243_1_.is(p_196243_4_.getBlock())) {
          super.onRemove(p_196243_1_, p_196243_2_, p_196243_3_, p_196243_4_, p_196243_5_);
          if (!p_196243_2_.isClientSide) {
-            redstonePowerManagement.onRemove(p_196243_2_, p_196243_3_, p_196243_1_);
+            if (p_196243_2_ instanceof ServerWorld) {
+               ServerWorld serverWorld = (ServerWorld) p_196243_2_;
+               RedstonePowerManagement redstonePowerManagement = serverWorld.getDataStorage().computeIfAbsent(RedstonePowerManagement::new, RedstonePowerManagement.NAME);
+               if (redstonePowerManagement.onRemove(p_196243_2_, p_196243_3_, p_196243_1_)) {
+                  redstonePowerManagement.setDirty();
+               }
+            }
          }
       }
    }
@@ -303,7 +315,13 @@ public class RedstoneWireBlock extends Block {
 
    public void neighborChanged(BlockState p_220069_1_, World p_220069_2_, BlockPos p_220069_3_, Block p_220069_4_, BlockPos p_220069_5_, boolean p_220069_6_) {
       if (!p_220069_2_.isClientSide) {
-         redstonePowerManagement.neighborChanged(p_220069_2_, p_220069_3_, p_220069_1_);
+         if (p_220069_2_ instanceof ServerWorld) {
+            ServerWorld serverWorld = (ServerWorld) p_220069_2_;
+            RedstonePowerManagement redstonePowerManagement = serverWorld.getDataStorage().computeIfAbsent(RedstonePowerManagement::new, RedstonePowerManagement.NAME);
+            if (redstonePowerManagement.neighborChanged(p_220069_2_, p_220069_3_, p_220069_1_)) {
+               redstonePowerManagement.setDirty();
+            }
+         }
       }
    }
 
