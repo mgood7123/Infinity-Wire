@@ -6,15 +6,20 @@ import net.minecraft.block.material.Material;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraft.world.storage.DimensionSavedDataManager;
+import net.minecraft.world.storage.WorldSavedData;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import smallville7123.modid_infinity_wire.Main;
+
+import java.util.function.Supplier;
 
 /**
  * User: The Grey Ghost
@@ -37,6 +42,17 @@ public class StartupCommon
     blockRegisterEvent.getRegistry().register(redstoneWireBlock);
 
     Main.LOGGER.info("Registered blocks");
+  }
+
+  public static class Saver {
+    @SubscribeEvent
+    public static void onWorldLoaded(WorldEvent.Load event)
+    {
+      RedstonePowerManagement saver = RedstonePowerManagement.getFromWorld(event.getWorld());
+      if (saver != null) {
+        Main.LOGGER.info("Found my data: " + saver.blockMap);
+      }
+    }
   }
 
   @SubscribeEvent

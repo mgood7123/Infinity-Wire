@@ -41,5 +41,6 @@ public class Main
      */
     public void registerCommonEvents(IEventBus eventBus) {
         eventBus.register(smallville7123.modid_infinity_wire.client.redstone.StartupCommon.class);
+        MinecraftForge.EVENT_BUS.register(smallville7123.modid_infinity_wire.client.redstone.StartupCommon.Saver.class);
     }
 }

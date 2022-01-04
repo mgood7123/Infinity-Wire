@@ -276,13 +276,11 @@ public class RedstoneWireBlock extends Block {
    // TODO: update mappings to parchment
 
    public void onPlace(BlockState p_220082_1_, World p_220082_2_, BlockPos p_220082_3_, BlockState p_220082_4_, boolean p_220082_5_) {
-      if (!p_220082_4_.is(p_220082_1_.getBlock()) && !p_220082_2_.isClientSide) {
-         if (p_220082_2_ instanceof ServerWorld) {
-            ServerWorld serverWorld = (ServerWorld) p_220082_2_;
-            RedstonePowerManagement redstonePowerManagement = serverWorld.getDataStorage().computeIfAbsent(RedstonePowerManagement::new, RedstonePowerManagement.NAME);
-            if (redstonePowerManagement.onPlace(p_220082_2_, p_220082_3_, p_220082_1_)) {
-               redstonePowerManagement.setDirty();
-            }
+      if (!p_220082_4_.is(p_220082_1_.getBlock())) {
+         RedstonePowerManagement saver = RedstonePowerManagement.getFromWorld(p_220082_2_);
+         if (saver != null) {
+            saver.onPlace(p_220082_2_, p_220082_3_, p_220082_1_);
+            saver.setDirty();
          }
       }
    }
@@ -290,14 +288,10 @@ public class RedstoneWireBlock extends Block {
    public void onRemove(BlockState p_196243_1_, World p_196243_2_, BlockPos p_196243_3_, BlockState p_196243_4_, boolean p_196243_5_) {
       if (!p_196243_5_ && !p_196243_1_.is(p_196243_4_.getBlock())) {
          super.onRemove(p_196243_1_, p_196243_2_, p_196243_3_, p_196243_4_, p_196243_5_);
-         if (!p_196243_2_.isClientSide) {
-            if (p_196243_2_ instanceof ServerWorld) {
-               ServerWorld serverWorld = (ServerWorld) p_196243_2_;
-               RedstonePowerManagement redstonePowerManagement = serverWorld.getDataStorage().computeIfAbsent(RedstonePowerManagement::new, RedstonePowerManagement.NAME);
-               if (redstonePowerManagement.onRemove(p_196243_2_, p_196243_3_, p_196243_1_)) {
-                  redstonePowerManagement.setDirty();
-               }
-            }
+         RedstonePowerManagement saver = RedstonePowerManagement.getFromWorld(p_196243_2_);
+         if (saver != null) {
+            saver.onRemove(p_196243_2_, p_196243_3_, p_196243_1_);
+            saver.setDirty();
          }
       }
    }
@@ -319,14 +313,10 @@ public class RedstoneWireBlock extends Block {
    }
 
    public void neighborChanged(BlockState p_220069_1_, World p_220069_2_, BlockPos p_220069_3_, Block p_220069_4_, BlockPos p_220069_5_, boolean p_220069_6_) {
-      if (!p_220069_2_.isClientSide) {
-         if (p_220069_2_ instanceof ServerWorld) {
-            ServerWorld serverWorld = (ServerWorld) p_220069_2_;
-            RedstonePowerManagement redstonePowerManagement = serverWorld.getDataStorage().computeIfAbsent(RedstonePowerManagement::new, RedstonePowerManagement.NAME);
-            if (redstonePowerManagement.neighborChanged(p_220069_2_, p_220069_3_, p_220069_1_)) {
-               redstonePowerManagement.setDirty();
-            }
-         }
+      RedstonePowerManagement saver = RedstonePowerManagement.getFromWorld(p_220069_2_);
+      if (saver != null) {
+         saver.onRemove(p_220069_2_, p_220069_3_, p_220069_1_);
+         saver.setDirty();
       }
    }
 
