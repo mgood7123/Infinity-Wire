@@ -31,6 +31,9 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+// TODO: merge with parchment mapped
+//  net.minecraft.block.RedstoneWireBlock @ net/minecraft/block/RedstoneWireBlock.java
+
 public class RedstoneWireBlock extends Block {
    public static final EnumProperty<RedstoneSide> NORTH = BlockStateProperties.NORTH_REDSTONE;
    public static final EnumProperty<RedstoneSide> EAST = BlockStateProperties.EAST_REDSTONE;
@@ -269,6 +272,8 @@ public class RedstoneWireBlock extends Block {
 
       }
    }
+
+   // TODO: update mappings to parchment
 
    public void onPlace(BlockState p_220082_1_, World p_220082_2_, BlockPos p_220082_3_, BlockState p_220082_4_, boolean p_220082_5_) {
       if (!p_220082_4_.is(p_220082_1_.getBlock()) && !p_220082_2_.isClientSide) {

@@ -3,10 +3,12 @@ package smallville7123.modid_infinity_wire.client.redstone;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.ListNBT;
+import net.minecraft.nbt.NBTUtil;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
-import net.minecraft.world.server.ServerWorld;
 import net.minecraft.world.storage.WorldSavedData;
+import net.minecraftforge.common.util.Constants;
 import smallville7123.modid_infinity_wire.Main;
 
 import java.util.ArrayList;
@@ -24,21 +26,21 @@ public class RedstonePowerManagement extends WorldSavedData {
         Main.LOGGER.info("load() called with: p_76184_1_ = [" + p_76184_1_ + "]");
         blockMap.clear();
         Main.LOGGER.info("load: p_76184_1_.size() = " + p_76184_1_.size());
-        int[] blockPosArray = p_76184_1_.getIntArray(NAME + "_blockPos");
+        ListNBT blockPosArray = p_76184_1_.getList(NAME + "_blockPos", Constants.NBT.TAG_COMPOUND);
+        ListNBT blockStateArray = p_76184_1_.getList(NAME + "_blockState", Constants.NBT.TAG_COMPOUND);
         int[] powerArray = p_76184_1_.getIntArray(NAME + "_blockMap_Int");
         int[] isPowerSourceArray = p_76184_1_.getIntArray(NAME + "_blockMap_Bool");
-        ArrayList<BlockPos> blockPos = new ArrayList<>();
-        for (int i = 0; i < blockPosArray.length; i++) {
-            int x = blockPosArray[i++];
-            int y = blockPosArray[i++];
-            int z = blockPosArray[i];
-            blockPos.add(new BlockPos(x, y, z));
-        }
-        for (int i = 0; i < blockPos.size(); i++) {
+        for (int i = 0; i < blockPosArray.size(); i++) {
             State tmp = new State(null);
+            tmp.blockState = NBTUtil.readBlockState(blockStateArray.getCompound(i));
             tmp.power = powerArray[i];
             tmp.isPowerSource = isPowerSourceArray[i] == 1;
-            blockMap.put(blockPos.get(i), tmp);
+            blockMap.put(
+                    NBTUtil.readBlockPos(
+                            blockPosArray.getCompound(i)
+                    ),
+                    tmp
+            );
         }
     }
 
@@ -46,19 +48,20 @@ public class RedstonePowerManagement extends WorldSavedData {
     public CompoundNBT save(CompoundNBT p_189551_1_) {
         Main.LOGGER.info("save() called with: p_189551_1_ = [" + p_189551_1_ + "]");
         Main.LOGGER.info("save: p_189551_1_.size() = " + p_189551_1_.size());
-        ArrayList<Integer> blockPosArray = new ArrayList<>();
+        ListNBT blockPosArray = new ListNBT();
         for (BlockPos blockPos : blockMap.keySet()) {
-            blockPosArray.add(blockPos.getX());
-            blockPosArray.add(blockPos.getY());
-            blockPosArray.add(blockPos.getZ());
+            blockPosArray.add(NBTUtil.writeBlockPos(blockPos));
         }
+        ListNBT blockStateArray = new ListNBT();
         ArrayList<Integer> powerArray = new ArrayList<>();
         ArrayList<Integer> isPowerSourceArray = new ArrayList<>();
         for (State value : blockMap.values()) {
+            blockStateArray.add(NBTUtil.writeBlockState(value.blockState));
             powerArray.add(value.power);
             isPowerSourceArray.add(value.isPowerSource ? 1 : 0);
         }
-        p_189551_1_.putIntArray(NAME + "_blockPos", blockPosArray);
+        p_189551_1_.put(NAME + "_blockPos", blockPosArray);
+        p_189551_1_.put(NAME + "_blockState", blockStateArray);
         p_189551_1_.putIntArray(NAME + "_blockMap_Int", powerArray);
         p_189551_1_.putIntArray(NAME + "_blockMap_Bool", isPowerSourceArray);
         Main.LOGGER.info("save: p_189551_1_ = [" + p_189551_1_ + "]");
@@ -85,6 +88,7 @@ public class RedstonePowerManagement extends WorldSavedData {
     }
 
     void calculatePowerMap(World world, BlockPos blockPos, BlockState blockState, Status status) {
+        Main.LOGGER.info("calculatePowerMap: block map: " + blockMap);
         Main.LOGGER.info("calculatePowerMap: block position: " + blockPos);
         Main.LOGGER.info("calculatePowerMap: block name: " + blockState.getBlock().getRegistryName());
         State state = blockMap.get(blockPos);
@@ -99,6 +103,7 @@ public class RedstonePowerManagement extends WorldSavedData {
 
     boolean update(World world, BlockPos blockPos, BlockState blockState, Status status) {
         Main.LOGGER.info("update: status: " + status);
+        Main.LOGGER.info("update: block map: " + blockMap);
         if (status == Status.NeighborChanged) {
             if (!blockState.canSurvive(world, blockPos)) {
                 Block.dropResources(blockState, world, blockPos);
@@ -111,12 +116,16 @@ public class RedstonePowerManagement extends WorldSavedData {
     }
 
     public boolean onPlace(World world, BlockPos blockPos, BlockState blockState) {
+        Main.LOGGER.info("onPlace: block map before: " + blockMap);
         blockMap.put(blockPos, new State(blockState));
+        Main.LOGGER.info("onPlace: block map after: " + blockMap);
         return update(world, blockPos, blockState, Status.Placed);
     }
 
     public boolean onRemove(World world, BlockPos blockPos, BlockState blockState) {
+        Main.LOGGER.info("onRemove: block map before: " + blockMap);
         blockMap.remove(blockPos);
+        Main.LOGGER.info("onRemove: block map after: " + blockMap);
         return update(world, blockPos, blockState, Status.Removed);
     }
 
