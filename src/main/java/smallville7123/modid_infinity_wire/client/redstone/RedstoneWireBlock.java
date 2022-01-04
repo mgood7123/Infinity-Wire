@@ -264,9 +264,9 @@ public class RedstoneWireBlock extends Block {
 
    private int getWireSignal(BlockState pState, BlockPos pPos) {
       if (pState.is(this)) {
-         Main.LOGGER.info("p_235557_1_ (this) = " + pState.getBlock().getRegistryName() + " + " + pPos);
+         Main.LOGGER.info("pState (this) = " + pState.getBlock().getRegistryName() + " + " + pPos);
          int power = pState.getValue(POWER);
-         Main.LOGGER.info("p_235557_1_ power = " + power);
+         Main.LOGGER.info("pState power = " + power);
          return power + 0;
       } else {
          return 0;
