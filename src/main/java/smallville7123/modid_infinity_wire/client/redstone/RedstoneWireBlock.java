@@ -324,9 +324,10 @@ public class RedstoneWireBlock extends Block {
    }
 
    public void neighborChanged(BlockState pState, World pLevel, BlockPos pPos, Block pBlock, BlockPos pFromPos, boolean pIsMoving) {
+      Main.LOGGER.info("neighborChanged() called with: pState = [" + pState + "], pLevel = [" + pLevel + "], pPos = [" + pPos + "], pBlock = [" + pBlock + "], pFromPos = [" + pFromPos + "], pIsMoving = [" + pIsMoving + "]");
       RedstonePowerManagement saver = RedstonePowerManagement.getFromWorld(pLevel);
       if (saver != null) {
-         saver.neighborChanged(pLevel, pPos, pState);
+         saver.neighborChanged(pLevel, pPos, pState, pFromPos);
          saver.setDirty();
       }
    }
