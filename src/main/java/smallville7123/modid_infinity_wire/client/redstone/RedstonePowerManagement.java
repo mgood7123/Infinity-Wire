@@ -78,6 +78,7 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
         NBT_Managers.BlockPos block = new NBT_Managers.BlockPos();
         NBT_Managers.BlockState state = new NBT_Managers.BlockState();
         NBT_Managers.ListNBT powerSourcesList = new NBT_Managers.ListNBT();
+        NBT_Managers.ListNBT emittingList = new NBT_Managers.ListNBT();
         NBT_Managers.Integer<NonNullArrayList<Integer>> powerArray = new NBT_Managers.Integer<>(NonNullArrayList::new);
         NBT_Managers.Boolean<NonNullArrayList<Integer>> isPowerSourceArray = new NBT_Managers.Boolean<>(NonNullArrayList::new);
         try {
@@ -88,6 +89,7 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
                 state.add(value.blockState);
                 powerArray.add(value.power);
                 powerSourcesList.addBlockPosList(value.powerSources);
+                emittingList.addBlockPosList(value.emittingPowerTo);
                 isPowerSourceArray.add(value.isPowerSource);
             });
             s = true;
@@ -100,6 +102,7 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
             powerArray.put(nbt, NAME + "_blockMap_Power");
             isPowerSourceArray.put(nbt, NAME + "_blockMap_IsPowerSourceArray");
             powerSourcesList.put(nbt, NAME + "_blockMap_PowerSources");
+            emittingList.put(nbt, NAME + "EmittingSources");
         }
         return nbt;
     }
@@ -111,18 +114,21 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
             NBT_Managers.BlockPos block = new NBT_Managers.BlockPos();
             NBT_Managers.BlockState state = new NBT_Managers.BlockState();
             NBT_Managers.ListNBT powerSourcesArray = new NBT_Managers.ListNBT();
+            NBT_Managers.ListNBT emittingArray = new NBT_Managers.ListNBT();
             NBT_Managers.Integer<NonNullArrayList<Integer>> powerArray = new NBT_Managers.Integer<>(NonNullArrayList::new);
             NBT_Managers.Boolean<NonNullArrayList<Integer>> isPowerSourceArray = new NBT_Managers.Boolean<>(NonNullArrayList::new);
             block.get(nbt, NAME + "_blockPos");
             state.get(nbt, NAME + "_blockState");
             powerArray.get(nbt, NAME + "_blockMap_Power");
             powerSourcesArray.get(nbt, NAME + "_blockMap_PowerSources");
+            emittingArray.get(nbt, NAME + "_blockMap_EmittingSources");
             isPowerSourceArray.get(nbt, NAME + "_blockMap_IsPowerSourceArray");
             for (int i = 0; i < block.size(); i++) {
                 State tmp = new State(state.read(i));
                 tmp.power = powerArray.read(i);
                 tmp.isPowerSource = isPowerSourceArray.read(i);
                 tmp.powerSources = powerSourcesArray.readBlockPosList(NonNullNonDuplicatesArrayList::new, i);
+                tmp.emittingPowerTo = emittingArray.readBlockPosList(NonNullNonDuplicatesArrayList::new, i);
                 tmp.wasPowerSourcePlaced = false;
                 tmp.wasPowerSourceRemoved = false;
                 blockMap.put(block.read(i), tmp);
@@ -139,6 +145,7 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
         boolean wasPowerSourcePlaced;
         boolean wasPowerSourceRemoved;
         NonNullNonDuplicatesArrayList<BlockPos> powerSources;
+        NonNullNonDuplicatesArrayList<BlockPos> emittingPowerTo;
 
         public State(BlockState blockState) {
             this.blockState = blockState;
@@ -147,6 +154,7 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
             wasPowerSourcePlaced = false;
             wasPowerSourceRemoved = false;
             powerSources = null;
+            emittingPowerTo = null;
         }
 
         @Override
@@ -160,6 +168,7 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
                     ", wasPowerSourcePlaced=" + wasPowerSourcePlaced +
                     ", wasPowerSourceRemoved=" + wasPowerSourceRemoved +
                     ", powerSources=" + powerSources +
+                    ", emittingPowerTo=" + emittingPowerTo +
                     '}';
         }
     }
@@ -228,6 +237,45 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
             Main.LOGGER.info("getSignalFrom: neighbor block is a signal source");
             int signal = neighborBlockState.getSignal(world, neighborBlockPos, directionFrom);
             Main.LOGGER.info("getSignalFrom: signal = " + signal);
+            if (signal == 0) {
+                State existing = blockMap.get(neighborBlockPos);
+                if (existing == null) {
+                    Main.LOGGER.info("preCalculatePowerMap: neighbor block does not exist in map, creating state");
+                } else {
+                    Main.LOGGER.info("preCalculatePowerMap: neighbor block does exist in map");
+                    if (existing.emittingPowerTo.contains(blockPos)) {
+                        existing.emittingPowerTo.remove(blockPos);
+                        if (existing.emittingPowerTo.size() == 0) {
+                            existing.emittingPowerTo = null;
+                            Main.LOGGER.info("preCalculatePowerMap: neighbor block does exist in map and is emitting power to no blocks, removing");
+                            blockMap.remove(neighborBlockPos);
+                        } else {
+                            Main.LOGGER.info("preCalculatePowerMap: neighbor block does exist in map and is emitting power to multiple blocks");
+                            blockMap.replace(neighborBlockPos, existing);
+                        }
+                    } else {
+                        Main.LOGGER.info("preCalculatePowerMap: neighbor block does exist in map but is not emitting power to target block");
+                    }
+                }
+            } else {
+                State existing = blockMap.get(neighborBlockPos);
+                if (existing == null) {
+                    Main.LOGGER.info("preCalculatePowerMap: neighbor block does not exist in map, creating state");
+                    existing = new State(neighborBlockState);
+                    existing.isPowerSource = true;
+                    existing.emittingPowerTo = new NonNullNonDuplicatesArrayList<>();
+                    existing.emittingPowerTo.add(blockPos);
+                    blockMap.put(neighborBlockPos, existing);
+                } else {
+                    Main.LOGGER.info("preCalculatePowerMap: neighbor block does exist in map, updating state");
+                    existing.isPowerSource = true;
+                    if (!existing.emittingPowerTo.contains(blockPos)) {
+                        existing.emittingPowerTo.add(blockPos);
+                    }
+                    blockMap.replace(neighborBlockPos, existing);
+                }
+            }
+
             return signal;
         }
         Main.LOGGER.info("getSignalFrom: neighbor block is not a signal source");
@@ -295,14 +343,10 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
                     existing = new State(neighborBlockState);
                     existing.isPowerSource = true;
                     existing.power = j;
-                    if (existing.powerSources == null) {
-                        existing.powerSources = new NonNullNonDuplicatesArrayList<>();
-                        existing.powerSources.add(x);
-                    } else {
-                        if (!existing.powerSources.contains(x)) {
-                            existing.powerSources.add(x);
-                        }
-                    }
+                    existing.powerSources = new NonNullNonDuplicatesArrayList<>();
+                    existing.powerSources.add(x);
+                    existing.emittingPowerTo = new NonNullNonDuplicatesArrayList<>();
+                    existing.emittingPowerTo.add(blockPos);
                     blockMap.put(neighborBlockPos, existing);
                 } else {
                     Main.LOGGER.info("preCalculatePowerMap: neighbor block does exist in map, updating state");
@@ -310,6 +354,9 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
                     existing.isPowerSource = true;
                     if (!existing.powerSources.contains(x)) {
                         existing.powerSources.add(x);
+                    }
+                    if (!existing.emittingPowerTo.contains(blockPos)) {
+                        existing.emittingPowerTo.add(blockPos);
                     }
                     blockMap.replace(neighborBlockPos, existing);
                 }
@@ -329,6 +376,8 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
                         State s = new State(blockState);
                         s.isPowerSource = true;
                         s.power = j;
+                        s.emittingPowerTo = new NonNullNonDuplicatesArrayList<>();
+                        s.emittingPowerTo.add(neighborBlockPos);
                         blockMap.put(x, s);
 //                    }
                 } else {
@@ -340,6 +389,9 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
                         Main.LOGGER.info("preCalculatePowerMap: neighbor block power source block does exist in map, updating state");
                         existing_.blockState = blockState;
                         existing_.power = j;
+                        if (!existing_.emittingPowerTo.contains(neighborBlockPos)) {
+                            existing_.emittingPowerTo.add(neighborBlockPos);
+                        }
                         blockMap.replace(x, existing_);
 //                    }
                 }
@@ -380,28 +432,25 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
                 for(Direction direction : DIRECTIONS) {
                     BlockPos x = blockPos.relative(direction);
                     int j = getSignalFrom(world, blockPos, x, world.getBlockState(x));
-                    Main.LOGGER.info("preCalculatePowerMap: j = " + j + ", direction = " + direction + ", x = " + getBlockName(world, x));
                     if (j != 0) {
                         State existing_ = blockMap.get(x);
-                        if (existing_ == null) {
-                            State s_ = new State(world.getBlockState(x));
-                            s_.isPowerSource = true;
-                            s_.power = j;
-                            blockMap.put(x, s_);
+                        if (existing_.emittingPowerTo == null) {
+                            existing_.emittingPowerTo = new NonNullNonDuplicatesArrayList<>();
+                            existing_.emittingPowerTo.add(blockPos);
                         } else {
-                            existing_.blockState = world.getBlockState(x);
-                            existing_.power = j;
-                            blockMap.replace(x, existing_);
+                            if (!existing_.emittingPowerTo.contains(blockPos)) {
+                                existing_.emittingPowerTo.add(blockPos);
+                            }
                         }
+                        blockMap.replace(x, existing_);
                         s.power = Math.max(s.power, j);
                         s.wasPowerSourcePlaced = true;
-                        BlockPos p = neighborBlockPos == null ? x : neighborBlockPos;
                         if (s.powerSources == null) {
                             s.powerSources = new NonNullNonDuplicatesArrayList<>();
-                            s.powerSources.add(p);
+                            s.powerSources.add(x);
                         } else {
-                            if (!existing.powerSources.contains(p)) {
-                                existing.powerSources.add(x);
+                            if (!s.powerSources.contains(x)) {
+                                s.powerSources.add(x);
                             }
                         }
                     }
@@ -423,26 +472,56 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
                 for (BlockPos powerSource : state.powerSources) {
                     State powerState = blockMap.get(powerSource);
                     if (powerState == null) {
-                        Main.LOGGER.error("preCalculatePowerMap: power source " + getBlockName(world, powerSource) + " " + powerSource + " for block " + getBlockName(state.blockState) + " " + blockPos + " does not exist in power map");
+                        Main.LOGGER.error("preCalculatePowerMap:   power source " + getBlockName(world, powerSource) + " " + powerSource + " for block " + getBlockName(state.blockState) + " " + blockPos + " does not exist in power map");
                     } else {
-                        Main.LOGGER.info("preCalculatePowerMap: power source " + getBlockName(powerState.blockState) + " " + powerSource + " for block " + getBlockName(state.blockState) + " " + blockPos + " does exist in power map");
+                        Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(powerState.blockState) + " " + powerSource + " for block " + getBlockName(state.blockState) + " " + blockPos + " does exist in power map");
                         if (powerState.powerSources == null) {
-                            Main.LOGGER.info("preCalculatePowerMap: power source " + getBlockName(powerState.blockState) + " " + powerSource + " for block " + getBlockName(state.blockState) + " " + blockPos + " contains no power sources, removing");
-                            blockMap.remove(powerSource);
+                            Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(powerState.blockState) + " " + powerSource + " for block " + getBlockName(state.blockState) + " " + blockPos + " contains no power sources");
+                            boolean e = false;
+                            for (BlockPos pos : powerState.emittingPowerTo) {
+                                Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(powerState.blockState) + " " + powerSource + " for block " + getBlockName(state.blockState) + " " + blockPos + " is emitting power to block " + getBlockName(world, pos) + " " + pos);
+                                if (pos.equals(blockPos)) e = true;
+                            }
+                            if (e) {
+                                Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(powerState.blockState) + " " + powerSource + " for block " + getBlockName(state.blockState) + " " + blockPos + " is emitting power to block " + getBlockName(state.blockState) + " " + blockPos);
+                                powerState.emittingPowerTo.remove(blockPos);
+                                if (powerState.emittingPowerTo.size() == 0) {
+                                    powerState.emittingPowerTo = null;
+                                    Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(powerState.blockState) + " " + powerSource + " for block " + getBlockName(state.blockState) + " " + blockPos + " is not emitting power to any blocks, removing");
+                                    blockMap.remove(powerSource);
+                                }
+                            }
                         } else {
-                            Main.LOGGER.info("preCalculatePowerMap: checking for adjacent power sources for " + getBlockName(powerState.blockState) + " " + powerSource);
+                            Main.LOGGER.info("preCalculatePowerMap:   checking for adjacent power sources for " + getBlockName(powerState.blockState) + " " + powerSource);
+                            boolean noPower = false;
                             for (BlockPos source : powerState.powerSources) {
                                 State power = blockMap.get(source);
                                 if (power == null) {
-                                    Main.LOGGER.error("preCalculatePowerMap: power source " + getBlockName(world, source) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " does not exist in power map");
+                                    Main.LOGGER.error("preCalculatePowerMap:     power source " + getBlockName(world, source) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " does not exist in power map");
                                 } else {
-                                    Main.LOGGER.info("preCalculatePowerMap: power source " + getBlockName(power.blockState) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " does exist in power map");
-                                    blockMap.remove(source);
+                                    Main.LOGGER.info("preCalculatePowerMap:     power source " + getBlockName(power.blockState) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " does exist in power map");
+                                    boolean e = false;
+                                    for (BlockPos pos : powerState.emittingPowerTo) {
+                                        Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(power.blockState) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " is emitting power to block " + getBlockName(power.blockState) + " " + source);
+                                        if (pos.equals(powerSource)) e = true;
+                                    }
+                                    if (e) {
+                                        Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(power.blockState) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " is emitting power to block " + getBlockName(power.blockState) + " " + source);
+                                        powerState.emittingPowerTo.remove(powerSource);
+                                        if (powerState.emittingPowerTo.size() == 0) {
+                                            powerState.emittingPowerTo = null;
+                                            Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(power.blockState) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " is not emitting power to any blocks, removing");
+                                            blockMap.remove(source);
+                                            noPower = true;
+                                        }
+                                    }
                                 }
                             }
-                            Main.LOGGER.info("preCalculatePowerMap: removed adjacent power sources for " + getBlockName(powerState.blockState) + " " + powerSource);
-                            Main.LOGGER.info("preCalculatePowerMap: removing " + getBlockName(powerState.blockState) + " " + powerSource);
-                            blockMap.remove(powerSource);
+                            Main.LOGGER.info("preCalculatePowerMap:   removed adjacent power sources for " + getBlockName(powerState.blockState) + " " + powerSource);
+                            if (noPower == true) {
+                                Main.LOGGER.info("preCalculatePowerMap:   removing " + getBlockName(powerState.blockState) + " " + powerSource);
+                                blockMap.remove(powerSource);
+                            }
                         }
                     }
                 }
@@ -492,12 +571,17 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
                         existing = new State(neighborBlockState);
                         existing.isPowerSource = true;
                         existing.power = signal;
+                        existing.emittingPowerTo = new NonNullNonDuplicatesArrayList<>();
+                        existing.emittingPowerTo.add(blockPos);
                         blockMap.put(neighborBlockPos, existing);
                         n = true;
                     } else if (existing.isPowerSource) {
                         Main.LOGGER.info("preCalculatePowerMap: updating neighbor state in block map");
                         existing.blockState = neighborBlockState;
                         existing.power = signal;
+                        if (!existing.powerSources.contains(blockPos)) {
+                            existing.powerSources.add(blockPos);
+                        }
                         blockMap.replace(neighborBlockPos, existing);
                         n = true;
                     }
