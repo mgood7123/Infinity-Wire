@@ -79,8 +79,8 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
         NBT_Managers.BlockState state = new NBT_Managers.BlockState();
         NBT_Managers.ListNBT powerSourcesList = new NBT_Managers.ListNBT();
         NBT_Managers.ListNBT emittingList = new NBT_Managers.ListNBT();
-        NBT_Managers.Integer<NonNullArrayList<Integer>> powerArray = new NBT_Managers.Integer<>(NonNullArrayList::new);
-        NBT_Managers.Boolean<NonNullArrayList<Integer>> isPowerSourceArray = new NBT_Managers.Boolean<>(NonNullArrayList::new);
+        NBT_Managers.Integer powerArray = new NBT_Managers.Integer(NonNullArrayList::new);
+        NBT_Managers.Boolean isPowerSourceArray = new NBT_Managers.Boolean(NonNullArrayList::new);
         try {
             for (BlockPos blockPos : blockMap.keySet()) {
                 block.add(blockPos);
@@ -115,8 +115,8 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
             NBT_Managers.BlockState state = new NBT_Managers.BlockState();
             NBT_Managers.ListNBT powerSourcesArray = new NBT_Managers.ListNBT();
             NBT_Managers.ListNBT emittingArray = new NBT_Managers.ListNBT();
-            NBT_Managers.Integer<NonNullArrayList<Integer>> powerArray = new NBT_Managers.Integer<>(NonNullArrayList::new);
-            NBT_Managers.Boolean<NonNullArrayList<Integer>> isPowerSourceArray = new NBT_Managers.Boolean<>(NonNullArrayList::new);
+            NBT_Managers.Integer powerArray = new NBT_Managers.Integer(NonNullArrayList::new);
+            NBT_Managers.Boolean isPowerSourceArray = new NBT_Managers.Boolean(NonNullArrayList::new);
             block.get(nbt, NAME + "_blockPos");
             state.get(nbt, NAME + "_blockState");
             powerArray.get(nbt, NAME + "_blockMap_Power");

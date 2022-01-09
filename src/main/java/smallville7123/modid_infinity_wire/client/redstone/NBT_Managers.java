@@ -17,10 +17,10 @@ public class NBT_Managers {
 
     }
 
-    private static abstract class ArrayBase<List extends java.util.List<E>, E> extends Base {
-        List list;
+    private static abstract class ArrayBase<E> extends Base {
+        List<E> list;
 
-        protected ArrayBase(Supplier<List> s) {
+        protected ArrayBase(Supplier<List<E>> s) {
             list = s.get();
         }
 
@@ -180,8 +180,8 @@ public class NBT_Managers {
         }
     }
 
-    public static class Integer<List extends java.util.List<java.lang.Integer>> extends ArrayBase<List, java.lang.Integer> {
-        protected Integer(Supplier<List> s) {
+    public static class Integer extends ArrayBase<java.lang.Integer> {
+        protected Integer(Supplier<List<java.lang.Integer>> s) {
             super(s);
         }
 
@@ -207,8 +207,8 @@ public class NBT_Managers {
         }
     }
 
-    public static class Boolean<List extends java.util.List<java.lang.Integer>> extends ArrayBase<List, java.lang.Integer> {
-        protected Boolean(Supplier<List> s) {
+    public static class Boolean extends ArrayBase<java.lang.Integer> {
+        protected Boolean(Supplier<List<java.lang.Integer>> s) {
             super(s);
         }
 
