@@ -298,12 +298,12 @@ public class RedstoneWireBlock extends Block {
 
    public void onRemove(BlockState pState, World pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
       if (!pIsMoving && !pState.is(pNewState.getBlock())) {
-         super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
          RedstonePowerManagement saver = RedstonePowerManagement.getFromWorld(pLevel);
          if (saver != null) {
             saver.onRemove(pLevel, pPos, pState);
             saver.setDirty();
          }
+         super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
       }
    }
 

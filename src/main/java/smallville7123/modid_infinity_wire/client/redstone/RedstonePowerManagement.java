@@ -4,9 +4,11 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.material.Material;
+import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.util.Direction;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.WorldOptimizer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
@@ -26,6 +28,7 @@ import java.util.function.Supplier;
 import static net.minecraft.client.renderer.WorldRenderer.DIRECTIONS;
 
 public class RedstonePowerManagement extends WorldSavedData implements Supplier {
+    final static boolean DEBUG = true;
     public static final String NAME = "RedstonePowerManagement";
 
     static String getStackTrace(Exception e) {
@@ -162,7 +165,6 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
             return "State{" +
                     "block name=" + getBlockName(blockState) +
                     ", blockState=" + blockState +
-                    ", blockState=" + power +
                     ", power=" + power +
                     ", isPowerSource=" + isPowerSource +
                     ", wasPowerSourcePlaced=" + wasPowerSourcePlaced +
@@ -416,6 +418,136 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
 
     Stage stage = Stage.None;
 
+    /*
+1.
+BlockPos{x=-27, y=4, z=-149}
+ isPowerSource=true,
+ powerSources=null,
+ emittingPowerTo=[
+   BlockPos{x=-28, y=4, z=-149}
+ ]
+
+2.
+BlockPos{x=-28, y=4, z=-149}
+  isPowerSource=true,
+  powerSources=[
+    BlockPos{x=-28, y=5, z=-149},
+    BlockPos{x=-27, y=4, z=-149}
+  ],
+  emittingPowerTo=[
+    BlockPos{x=-29, y=4, z=-149}
+  ]
+
+3.
+BlockPos{x=-28, y=5, z=-149}
+  isPowerSource=true,
+  powerSources=null,
+  emittingPowerTo=[
+    BlockPos{x=-28, y=4, z=-149}
+  ]
+
+4.
+BlockPos{x=-29, y=4, z=-149}
+  isPowerSource=false,
+  powerSources=[
+    BlockPos{x=-28, y=4, z=-149}
+  ],
+  emittingPowerTo=null
+    */
+
+
+    boolean isNotEmittingPower(State in) {
+        if (in.emittingPowerTo == null) {
+            return true;
+        } else if (in.emittingPowerTo.size() == 0) {
+            in.emittingPowerTo = null;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    boolean isNotBeingPowered(State in) {
+        if (in.powerSources == null) {
+            return true;
+        } else if (in.powerSources.size() == 0) {
+            in.powerSources = null;
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    void tryRemove(BlockPos inPos, State in) {
+        tryRemove(inPos, in, null, null);
+    }
+
+    // if 4. is removed, then 2.emittingPowerTo would remove 4.BlockPos causing 2.emittingPowerTo to be empty and thus 0 size/null
+    //
+    // because 2.emittingPowerTo is now null, 3. and 1. are now useless
+    // since 2. does not emit 3.'s power nor 1.'s power to anything, and thus 2., 3., and 1. should now be removed
+    void tryRemoveIfNotPowered(BlockPos inPos, State in, BlockPos parentPos, State parent) {
+        String info = ", inPos: " + inPos + ", in: " + in;
+        if (isNotBeingPowered(in)) {
+            blockMap.remove(inPos);
+            // we are not being powered
+            if (parent != null) {
+                throw new RuntimeException("Unexpected error, parent != null but we are not emitting power nor being powered" + info);
+            }
+        } else {
+            // we do not currently emit power to anything but we are being powered
+            for (BlockPos powerSource : in.powerSources) {
+                State state = blockMap.get(powerSource);
+                tryRemove(powerSource, Objects.requireNonNull(state, "Error: state does not exist in array" + info), inPos, in);
+            }
+            // check if we are still powered
+            if (isNotBeingPowered(in)) {
+                blockMap.remove(inPos);
+            } else {
+                // we are still being powered by something
+                // should we error here?
+            }
+        }
+    }
+
+    // if 4. is removed, then 2.emittingPowerTo would remove 4.BlockPos causing 2.emittingPowerTo to be empty and thus 0 size/null
+    //
+    // because 2.emittingPowerTo is now null, 3. and 1. are now useless
+    // since 2. does not emit 3.'s power nor 1.'s power to anything, and thus 2., 3., and 1. should now be removed
+    void tryRemove(BlockPos inPos, State in, BlockPos parentPos, State parent) {
+        String info = ", inPos: " + inPos + ", in: " + in;
+        // a state should be removed if it is not emitting power and if it is not powered by anything
+        if (isNotEmittingPower(in)) {
+            tryRemoveIfNotPowered(inPos, in, parentPos, parent);
+        } else {
+            // we are emitting power
+            if (parent == null) {
+                throw new RuntimeException("Error: we are emitting power but do not have a parent of which we are a power source of");
+            } else {
+                in.emittingPowerTo.remove(parentPos);
+                parent.powerSources.remove(inPos);
+                // check if we are still emitting power
+                if (isNotEmittingPower(in)) {
+                    blockMap.remove(inPos);
+                } else {
+                    // we are still emitting power
+                    // should we error here?
+                }
+            }
+        }
+    }
+
+// block map: (4 blocks) {
+//  BlockPos{x=-27, y=4, z=-149}=State{power=15, isPowerSource=true, powerSources=null, emittingPowerTo=[BlockPos{x=-28, y=4, z=-149}]},
+//  BlockPos{x=-28, y=4, z=-149}=State{power=15, isPowerSource=true, powerSources=[BlockPos{x=-28, y=5, z=-149}, BlockPos{x=-27, y=4, z=-149}], emittingPowerTo=[BlockPos{x=-29, y=4, z=-149}]},
+//  BlockPos{x=-28, y=5, z=-149}=State{power=15, isPowerSource=true, powerSources=null, emittingPowerTo=[BlockPos{x=-28, y=4, z=-149}]},
+//  BlockPos{x=-29, y=4, z=-149}=State{power=15, isPowerSource=false, powerSources=[BlockPos{x=-28, y=4, z=-149}], emittingPowerTo=null}}
+// block map: (4 blocks) {
+//  BlockPos{x=-27, y=4, z=-149}=State{power=0, isPowerSource=true, powerSources=null, emittingPowerTo=[BlockPos{x=-28, y=4, z=-149}]}}
+//  BlockPos{x=-28, y=4, z=-149}=State{power=0, isPowerSource=true, powerSources=[BlockPos{x=-28, y=5, z=-149}, BlockPos{x=-27, y=4, z=-149}], emittingPowerTo=[BlockPos{x=-29, y=4, z=-149}]},
+//  BlockPos{x=-28, y=5, z=-149}=State{power=0, isPowerSource=true, powerSources=null, emittingPowerTo=[BlockPos{x=-28, y=4, z=-149}]},
+//  BlockPos{x=-29, y=4, z=-149}=State{power=0, isPowerSource=false, powerSources=[BlockPos{x=-28, y=4, z=-149}], emittingPowerTo=null},
+
     void preCalculatePowerMap(World world, BlockPos blockPos, BlockState blockState, BlockPos neighborBlockPos, BlockState neighborBlockState, Status status) {
         Main.LOGGER.info("preCalculatePowerMap: block map: (" + blockMap.size() + " block" + (blockMap.size() == 1 ? "" : "s") + ") " + blockMap);
         Main.LOGGER.info("preCalculatePowerMap: block position: " + blockPos);
@@ -501,16 +633,16 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
                                 } else {
                                     Main.LOGGER.info("preCalculatePowerMap:     power source " + getBlockName(power.blockState) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " does exist in power map");
                                     boolean e = false;
-                                    for (BlockPos pos : powerState.emittingPowerTo) {
-                                        Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(power.blockState) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " is emitting power to block " + getBlockName(power.blockState) + " " + source);
+                                    for (BlockPos pos : power.emittingPowerTo) {
+                                        Main.LOGGER.info("preCalculatePowerMap:     power source " + getBlockName(power.blockState) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " is emitting power to block " + getBlockName(world, pos) + " " + pos);
                                         if (pos.equals(powerSource)) e = true;
                                     }
                                     if (e) {
-                                        Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(power.blockState) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " is emitting power to block " + getBlockName(power.blockState) + " " + source);
-                                        powerState.emittingPowerTo.remove(powerSource);
-                                        if (powerState.emittingPowerTo.size() == 0) {
-                                            powerState.emittingPowerTo = null;
-                                            Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(power.blockState) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " is not emitting power to any blocks, removing");
+                                        Main.LOGGER.info("preCalculatePowerMap:   removing block " + getBlockName(powerState.blockState) + " " + powerSource + " from power emission of power source " + getBlockName(power.blockState) + " " + source);
+                                        power.emittingPowerTo.remove(powerSource);
+                                        if (power.emittingPowerTo.size() == 0) {
+                                            power.emittingPowerTo = null;
+                                            Main.LOGGER.info("preCalculatePowerMap:   power source " + getBlockName(power.blockState) + " " + source + " for block " + getBlockName(powerState.blockState) + " " + powerSource + " is no longer emitting power to any blocks, removing");
                                             blockMap.remove(source);
                                             noPower = true;
                                         }
@@ -519,8 +651,13 @@ public class RedstonePowerManagement extends WorldSavedData implements Supplier 
                             }
                             Main.LOGGER.info("preCalculatePowerMap:   removed adjacent power sources for " + getBlockName(powerState.blockState) + " " + powerSource);
                             if (noPower == true) {
-                                Main.LOGGER.info("preCalculatePowerMap:   removing " + getBlockName(powerState.blockState) + " " + powerSource);
-                                blockMap.remove(powerSource);
+                                if (powerState.emittingPowerTo.size() == 0) {
+                                    powerState.emittingPowerTo = null;
+                                    Main.LOGGER.info("preCalculatePowerMap:   block " + getBlockName(powerState.blockState) + " " + powerSource + " no longer has any power sources, removing");
+                                    blockMap.remove(powerSource);
+                                } else {
+                                    Main.LOGGER.info("preCalculatePowerMap:   block " + getBlockName(powerState.blockState) + " " + powerSource + " is still emitting power to blocks");
+                                }
                             }
                         }
                     }
